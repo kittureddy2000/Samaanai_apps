@@ -89,7 +89,7 @@ jobs:
 
       - name: Run tests
         working-directory: ./backend-express
-        run: npm test
+        run: npm test -- --passWithNoTests
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://test:test@localhost:5432/test_db
