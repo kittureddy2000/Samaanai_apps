@@ -1,0 +1,82 @@
+# docker-compose.prod.yml - PRODUCTION ENVIRONMENT
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Production uses Cloud SQL, this is for local prod testing)
+  postgres:
+    image: postgres:14
+    container_name: samaanai-postgres-prod
+    env_file:
+      - .env.production
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - samaanai-network
+    # NOTE: In real production, use Cloud SQL - don't expose port
+    ports:
+      - "5432:5432"
+
+  # Express.js Backend API (Production Build)
+  backend:
+    build:
+      context: ./backend-express
+      dockerfile: Dockerfile  # Production Dockerfile (multi-stage)
+      args:
+        NODE_ENV: production
+    container_name: samaanai-backend-prod
+    env_file:
+      - .env.production
+    environment:
+      # Override with Docker-specific values
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      NODE_ENV: production
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - samaanai-network
+    restart: unless-stopped
+    # Production: No volume mounts (code is baked into image)
+    # Production: Uses node (not nodemon)
+
+  # React Native Web Frontend (Production Build)
+  frontend:
+    build:
+      context: ./samaanai-mobile
+      dockerfile: Dockerfile.prod
+      args:
+        NODE_ENV: production
+        API_BASE_URL: ${API_BASE_URL}
+    container_name: samaanai-frontend-prod
+    environment:
+      NODE_ENV: production
+    ports:
+      - "80:80"  # Nginx serves on port 80
+    depends_on:
+      - backend
+    networks:
+      - samaanai-network
+    restart: unless-stopped
+    # Production: Static files served by Nginx
+
+volumes:
+  postgres_data_prod:
+    driver: local
+
+networks:
+  samaanai-network:
+    driver: bridge
