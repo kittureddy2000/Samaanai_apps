@@ -139,42 +139,42 @@ API_BASE_URL=http://localhost:8080
 
 ## 🚢 Deployment to Google Cloud Run
 
-### Quick Start
-
 This project includes automated CI/CD deployment to **staging** and **production** environments via GitHub Actions.
-
-### 🤖 Automated Setup (Recommended)
-
-**Run the automated setup script to configure everything in ~10 minutes:**
-
-```bash
-./setup-gcp-environments.sh
-```
-
-**📖 Automated Setup Guide:** See [`AUTOMATED_SETUP_GUIDE.md`](./AUTOMATED_SETUP_GUIDE.md) for instructions.
-
-This script automates ~80% of the setup work:
-- Creates GCP projects
-- Enables APIs
-- Creates service accounts
-- Generates secrets
-- Downloads keys for GitHub
-
-### 📖 Manual Setup (Alternative)
-
-**📖 Staging & Production Setup:** See [`STAGING_PRODUCTION_SETUP.md`](./STAGING_PRODUCTION_SETUP.md) for manual step-by-step guide.
-
-**📖 Initial Setup Guide:** See [`GITHUB_SETUP.md`](./GITHUB_SETUP.md) for single-environment setup.
-
-**✅ Deployment Checklist:** See [`DEPLOYMENT_CHECKLIST.md`](./DEPLOYMENT_CHECKLIST.md) for quick reference.
 
 ### Deployment Strategy
 
 ```
 Push to 'staging' branch  →  Auto-deploy to Staging Environment
 Push to 'main' branch     →  Auto-deploy to Production Environment
-Manual trigger            →  Choose environment
 ```
+
+### 🤖 Automated Setup (Recommended)
+
+Run these scripts to set up everything automatically:
+
+```bash
+# 1. Create GCP projects, enable APIs, create service accounts
+./setup-gcp-environments.sh
+
+# 2. Create PostgreSQL databases for staging and production
+./setup-cloud-sql.sh
+
+# 3. Create GitHub repository and add secrets
+./setup-github-repo.sh
+
+# 4. Deploy to staging
+git checkout -b staging
+git push -u origin staging
+```
+
+The automated scripts handle:
+- ✅ Creates separate GCP projects for staging and production
+- ✅ Enables required APIs (Cloud Run, Cloud Build, Secret Manager, Cloud SQL)
+- ✅ Creates service accounts with proper IAM roles
+- ✅ Generates secure JWT secrets
+- ✅ Creates Cloud SQL PostgreSQL databases
+- ✅ Sets up GitHub repository and secrets
+- ✅ Configures CI/CD pipeline
 
 ### Quick Deploy (After Initial Setup)
 
@@ -182,6 +182,11 @@ Manual trigger            →  Choose environment
 # Make your changes
 git add .
 git commit -m "feat: your feature description"
+
+# Deploy to staging
+git push origin staging
+
+# Deploy to production
 git push origin main
 
 # GitHub Actions automatically:
@@ -192,39 +197,7 @@ git push origin main
 # 5. Performs health check
 ```
 
-### First-Time Setup Summary
-
-1. **Create GCP Project & Enable APIs**
-   ```bash
-   gcloud projects create samaanai-prod --name="Samaanai Production"
-   gcloud services enable run.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
-   ```
-
-2. **Create Service Account & Download Key**
-   ```bash
-   gcloud iam service-accounts create github-actions --display-name="GitHub Actions"
-   # Grant IAM roles (see GITHUB_SETUP.md for details)
-   gcloud iam service-accounts keys create github-actions-key.json \
-     --iam-account=github-actions@PROJECT_ID.iam.gserviceaccount.com
-   ```
-
-3. **Create Secrets in Secret Manager**
-   ```bash
-   echo -n "your-database-url" | gcloud secrets create DATABASE_URL --data-file=-
-   echo -n "$(openssl rand -base64 32)" | gcloud secrets create JWT_SECRET --data-file=-
-   # See GITHUB_SETUP.md for complete list
-   ```
-
-4. **Configure GitHub Secrets**
-   - Go to: Repository → Settings → Secrets and variables → Actions
-   - Add: `GCP_PROJECT_ID` and `GCP_SA_KEY`
-
-5. **Push to Deploy**
-   ```bash
-   git push origin main
-   ```
-
-For complete step-by-step instructions, see [`GITHUB_SETUP.md`](./GITHUB_SETUP.md).
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for detailed deployment instructions and troubleshooting.
 
 ## 📱 API Endpoints
 
