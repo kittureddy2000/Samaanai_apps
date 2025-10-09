@@ -29,7 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.set-env.outputs.environment }}
-      project-id: ${{ steps.set-env.outputs.project-id }}
       service-name: ${{ steps.set-env.outputs.service-name }}
     steps:
       - name: Set environment variables
@@ -51,17 +50,14 @@ jobs:
 
           echo "environment=$ENV" >> $GITHUB_OUTPUT
 
-          # Set project ID based on environment
+          # Set service name based on environment
           if [[ "$ENV" == "production" ]]; then
-            echo "project-id=${{ secrets.GCP_PROJECT_ID_PROD }}" >> $GITHUB_OUTPUT
             echo "service-name=samaanai-backend" >> $GITHUB_OUTPUT
           else
-            echo "project-id=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_OUTPUT
             echo "service-name=samaanai-backend-staging" >> $GITHUB_OUTPUT
           fi
 
           echo "🎯 Deploying to: $ENV"
-          echo "📦 Project ID: $(if [[ "$ENV" == "production" ]]; then echo "${{ secrets.GCP_PROJECT_ID_PROD }}"; else echo "${{ secrets.GCP_PROJECT_ID_STAGING }}"; fi)"
 
   test:
     name: Run Tests
@@ -124,9 +120,15 @@ jobs:
       - name: Build Docker Image
         working-directory: ./backend-express
         run: |
-          PROJECT_ID="${{ needs.setup.outputs.project-id }}"
           SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
 
           IMAGE_TAG=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}
           IMAGE_LATEST=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:latest
@@ -147,9 +149,15 @@ jobs:
 
       - name: Push Docker Image
         run: |
-          PROJECT_ID="${{ needs.setup.outputs.project-id }}"
           SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
 
           IMAGE_TAG=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}
           IMAGE_LATEST=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:latest
@@ -164,9 +172,16 @@ jobs:
       - name: Deploy to Cloud Run
         id: deploy
         run: |
-          PROJECT_ID="${{ needs.setup.outputs.project-id }}"
           SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
+
           IMAGE="${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}"
 
           # Set environment-specific configurations
@@ -214,9 +229,16 @@ jobs:
 
       - name: Run Database Migrations
         run: |
-          PROJECT_ID="${{ needs.setup.outputs.project-id }}"
           SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
           ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
+
           IMAGE="${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}"
           JOB_NAME="samaanai-migration-${ENV}-${{ github.sha }}"
 
