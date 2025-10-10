@@ -1,0 +1,234 @@
+name: Deploy Frontend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'samaanai-mobile/**'
+      - '.github/workflows/frontend-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  GCP_REGION: us-central1
+  REGISTRY: gcr.io
+
+jobs:
+  # Determine deployment environment
+  setup:
+    name: Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      service-name: ${{ steps.set-env.outputs.service-name }}
+      api-url: ${{ steps.set-env.outputs.api-url }}
+    steps:
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger - use selected environment
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Push to main branch -> production
+            ENV="production"
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            # Push to staging branch -> staging
+            ENV="staging"
+          else
+            # Default to staging for other branches
+            ENV="staging"
+          fi
+
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+          # Set service name based on environment
+          if [[ "$ENV" == "production" ]]; then
+            echo "service-name=samaanai-frontend" >> $GITHUB_OUTPUT
+            echo "api-url=https://samaanai-backend.run.app" >> $GITHUB_OUTPUT
+          else
+            echo "service-name=samaanai-frontend-staging" >> $GITHUB_OUTPUT
+            echo "api-url=https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app" >> $GITHUB_OUTPUT
+          fi
+
+          echo "🎯 Deploying to: $ENV"
+
+  deploy:
+    name: Build and Deploy Frontend to Cloud Run
+    needs: [setup]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+      url: ${{ steps.get-url.outputs.SERVICE_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ needs.setup.outputs.environment == 'production' && secrets.GCP_SA_KEY_PROD || secrets.GCP_SA_KEY_STAGING }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+          gcloud auth configure-docker gcr.io
+
+      - name: Build Docker Image
+        working-directory: ./samaanai-mobile
+        run: |
+          SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          API_URL="${{ needs.setup.outputs.api-url }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
+
+          IMAGE_TAG=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:latest
+          IMAGE_ENV=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${ENV}
+
+          docker build \
+            -t $IMAGE_TAG \
+            -t $IMAGE_LATEST \
+            -t $IMAGE_ENV \
+            -f Dockerfile.prod \
+            --build-arg API_BASE_URL=$API_URL \
+            .
+
+          echo "Built images:"
+          echo "  - $IMAGE_TAG"
+          echo "  - $IMAGE_LATEST"
+          echo "  - $IMAGE_ENV"
+
+      - name: Push Docker Image
+        run: |
+          SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
+
+          IMAGE_TAG=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:latest
+          IMAGE_ENV=${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${ENV}
+
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+          docker push $IMAGE_ENV
+
+          echo "Pushed images to GCR"
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          # Get PROJECT_ID directly from secrets
+          if [[ "$ENV" == "production" ]]; then
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_PROD }}"
+          else
+            PROJECT_ID="${{ secrets.GCP_PROJECT_ID_STAGING }}"
+          fi
+
+          IMAGE="${{ env.REGISTRY }}/${PROJECT_ID}/${SERVICE_NAME}:${{ github.sha }}"
+
+          # Set environment-specific configurations
+          if [[ "$ENV" == "production" ]]; then
+            MIN_INSTANCES=1
+            MAX_INSTANCES=100
+            MEMORY="512Mi"
+            CPU=1
+          else
+            MIN_INSTANCES=0
+            MAX_INSTANCES=10
+            MEMORY="256Mi"
+            CPU=1
+          fi
+
+          echo "🚀 Deploying frontend to $ENV environment"
+          echo "   Service: $SERVICE_NAME"
+          echo "   Project: $PROJECT_ID"
+          echo "   Image: $IMAGE"
+
+          gcloud run deploy $SERVICE_NAME \
+            --image $IMAGE \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 80 \
+            --min-instances $MIN_INSTANCES \
+            --max-instances $MAX_INSTANCES \
+            --memory $MEMORY \
+            --cpu $CPU \
+            --timeout 300 \
+            --concurrency 80 \
+            --labels environment=$ENV,app=samaanai,component=frontend
+
+      - name: Get Service URL
+        id: get-url
+        run: |
+          SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 Frontend Deployment Successful!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Environment: $ENV"
+          echo "Service URL: $SERVICE_URL"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+
+          echo "::notice title=Deployment Successful ($ENV)::Frontend deployed to $SERVICE_URL"
+
+      - name: Health Check
+        run: |
+          SERVICE_NAME="${{ needs.setup.outputs.service-name }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+
+          SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+
+          echo "⏳ Waiting for service to be ready..."
+          sleep 15
+
+          echo "🏥 Performing health check..."
+          if curl -f -s $SERVICE_URL -o /dev/null; then
+            echo "✅ Health check passed!"
+          else
+            echo "⚠️  Warning: Health check failed, but deployment succeeded"
+            echo "   You may need to check the service logs"
+          fi
+
+    outputs:
+      service-url: ${{ steps.get-url.outputs.SERVICE_URL }}
