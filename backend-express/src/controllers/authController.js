@@ -289,6 +289,10 @@ exports.googleCallback = async (req, res, next) => {
     // For web, redirect to localhost, for mobile use deep link
     const redirectUrl = process.env.GOOGLE_SUCCESS_REDIRECT || 'http://localhost:8081';
 
+    console.log('🔍 OAuth Redirect Debug:');
+    console.log('  GOOGLE_SUCCESS_REDIRECT env var:', process.env.GOOGLE_SUCCESS_REDIRECT);
+    console.log('  Final redirectUrl:', redirectUrl);
+
     res.redirect(`${redirectUrl}?${params.toString()}`);
   } catch (error) {
     next(error);
