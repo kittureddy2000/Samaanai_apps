@@ -216,7 +216,7 @@ jobs:
             --platform managed \
             --allow-unauthenticated \
             --port 8080 \
-            --set-env-vars NODE_ENV=$ENV,PORT=8080,ENVIRONMENT=$ENV \
+            --set-env-vars NODE_ENV=$ENV,ENVIRONMENT=$ENV \
             --set-secrets DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest \
             --add-cloudsql-instances $SQL_CONNECTION \
             --min-instances $MIN_INSTANCES \
