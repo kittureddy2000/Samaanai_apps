@@ -4,6 +4,7 @@ import { TextInput, Button, Text, Title, HelperText, Divider } from 'react-nativ
 import { useAuth } from '../../contexts/AuthContext';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -15,7 +16,9 @@ export default function LoginScreen({ navigation }) {
   const [error, setError] = useState('');
   const { login, loginWithGoogle } = useAuth();
 
-  const API_URL = process.env.API_BASE_URL || 'http://localhost:8080';
+  const API_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:8080';
+
+  console.log('🔍 Frontend API_URL:', API_URL);
   const redirectUri = AuthSession.makeRedirectUri({
     useProxy: true,
   });
