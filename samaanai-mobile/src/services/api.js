@@ -1,0 +1,172 @@
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080';
+
+const apiClient = axios.create({
+  baseURL: `${API_BASE_URL}/api/v1`,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Request interceptor - attach JWT token
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - handle token refresh
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Token expired
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = await AsyncStorage.getItem('refreshToken');
+        const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
+          refreshToken
+        });
+
+        await AsyncStorage.setItem('accessToken', data.accessToken);
+        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed - logout user
+        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+        // Navigate to login (use navigation ref)
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// API methods
+export const api = {
+  // Auth
+  login: (email, password) =>
+    apiClient.post('/auth/login', { email, password }),
+
+  register: (username, email, password) =>
+    apiClient.post('/auth/register', { username, email, password }),
+
+  refreshToken: (refreshToken) =>
+    apiClient.post('/auth/refresh', { refreshToken }),
+
+  // Nutrition
+  getMeals: (params) =>
+    apiClient.get('/nutrition/meals', { params }),
+
+  createMeal: (mealData) =>
+    apiClient.post('/nutrition/meals', mealData),
+
+  updateMeal: (id, mealData) =>
+    apiClient.put(`/nutrition/meals/${id}`, mealData),
+
+  deleteMeal: (id) =>
+    apiClient.delete(`/nutrition/meals/${id}`),
+
+  getExercises: (params) =>
+    apiClient.get('/nutrition/exercises', { params }),
+
+  createExercise: (exerciseData) =>
+    apiClient.post('/nutrition/exercises', exerciseData),
+
+  getWeightEntries: () =>
+    apiClient.get('/nutrition/weight'),
+
+  createWeightEntry: (weightData) =>
+    apiClient.post('/nutrition/weight', weightData),
+
+  getDailyReport: (date) =>
+    apiClient.get('/nutrition/reports/daily', { params: { date } }),
+
+  getWeeklyReport: (startDate, endDate) =>
+    apiClient.get('/nutrition/reports/weekly', { params: { startDate, endDate } }),
+
+  getMonthlyReport: (month, year) =>
+    apiClient.get('/nutrition/reports/monthly', { params: { month, year } }),
+
+  getYearlyReport: (year) =>
+    apiClient.get('/nutrition/reports/yearly', { params: { year } }),
+
+  addOrUpdateMealEntry: (mealData) => {
+    if (mealData.id) {
+      const { id, ...data } = mealData;
+      return apiClient.put(`/nutrition/meals/${id}`, data);
+    }
+    return apiClient.post('/nutrition/meals', mealData);
+  },
+
+  deleteMealEntry: (id) =>
+    apiClient.delete(`/nutrition/meals/${id}`),
+
+  addOrUpdateExerciseEntry: (exerciseData) => {
+    if (exerciseData.id) {
+      const { id, ...data } = exerciseData;
+      return apiClient.put(`/nutrition/exercises/${id}`, data);
+    }
+    return apiClient.post('/nutrition/exercises', exerciseData);
+  },
+
+  deleteExerciseEntry: (id) =>
+    apiClient.delete(`/nutrition/exercises/${id}`),
+
+  addOrUpdateWeightEntry: (weightData) =>
+    apiClient.post('/nutrition/weight', weightData),
+
+  getWeightHistory: () =>
+    apiClient.get('/nutrition/weight'),
+
+  // Todo
+  getTasks: (params) =>
+    apiClient.get('/todo/tasks', { params }),
+
+  getTask: (id) =>
+    apiClient.get(`/todo/tasks/${id}`),
+
+  createTask: (taskData) =>
+    apiClient.post('/todo/tasks', taskData),
+
+  updateTask: (id, taskData) =>
+    apiClient.put(`/todo/tasks/${id}`, taskData),
+
+  deleteTask: (id) =>
+    apiClient.delete(`/todo/tasks/${id}`),
+
+  toggleTaskCompletion: (id) =>
+    apiClient.patch(`/todo/tasks/${id}/toggle`),
+
+  getTaskStats: () =>
+    apiClient.get('/todo/tasks/stats'),
+
+  // User
+  getProfile: () => apiClient.get('/user/profile'),
+
+  updateProfile: (profileData) =>
+    apiClient.put('/user/profile', profileData),
+
+  changePassword: (passwordData) =>
+    apiClient.put('/user/password', passwordData),
+
+  getPreferences: () => apiClient.get('/user/preferences'),
+
+  updatePreferences: (preferences) =>
+    apiClient.put('/user/preferences', preferences)
+};
+
+export default api;
