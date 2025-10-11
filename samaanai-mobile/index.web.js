@@ -1,6 +1,9 @@
 import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
 
+// Import web-specific styles
+import './src/styles/web.css';
+
 import App from './App';
 
 // Set up web-specific configurations

@@ -1,15 +1,9 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Provider as PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
-
-// Import web-specific styles
-if (Platform.OS === 'web') {
-  require('./src/styles/web.css');
-}
 
 const theme = {
   ...MD3LightTheme,
