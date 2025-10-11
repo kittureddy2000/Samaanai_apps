@@ -13,10 +13,22 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "API_BASE_URL": "https://api-staging.samaanai.com"
+        "API_BASE_URL": "https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app"
       },
       "android": {
         "buildType": "apk"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "env": {
+        "API_BASE_URL": "https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
       }
     },
     "production": {

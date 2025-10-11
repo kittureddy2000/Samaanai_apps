@@ -1,0 +1,197 @@
+name: Build Mobile Apps
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+    paths:
+      - 'samaanai-mobile/**'
+      - '.github/workflows/mobile-build.yml'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+        default: 'android'
+      profile:
+        description: 'Build profile'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+        default: 'staging'
+
+jobs:
+  determine-build:
+    name: Determine Build Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.config.outputs.profile }}
+      should-build-android: ${{ steps.config.outputs.should_build_android }}
+      should-build-ios: ${{ steps.config.outputs.should_build_ios }}
+    steps:
+      - name: Set build configuration
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "profile=${{ github.event.inputs.profile }}" >> $GITHUB_OUTPUT
+
+            if [ "${{ github.event.inputs.platform }}" == "android" ] || [ "${{ github.event.inputs.platform }}" == "all" ]; then
+              echo "should_build_android=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_build_android=false" >> $GITHUB_OUTPUT
+            fi
+
+            if [ "${{ github.event.inputs.platform }}" == "ios" ] || [ "${{ github.event.inputs.platform }}" == "all" ]; then
+              echo "should_build_ios=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_build_ios=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Auto-triggered by push
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              echo "profile=production" >> $GITHUB_OUTPUT
+            else
+              echo "profile=staging" >> $GITHUB_OUTPUT
+            fi
+
+            # Build both platforms on push
+            echo "should_build_android=true" >> $GITHUB_OUTPUT
+            echo "should_build_ios=true" >> $GITHUB_OUTPUT
+          fi
+
+  build-android:
+    name: Build Android APK
+    needs: determine-build
+    if: needs.determine-build.outputs.should-build-android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: samaanai-mobile/package-lock.json
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: samaanai-mobile
+        run: npm ci
+
+      - name: Build Android APK
+        working-directory: samaanai-mobile
+        run: |
+          echo "Building Android APK for ${{ needs.determine-build.outputs.profile }} environment"
+          eas build --platform android --profile ${{ needs.determine-build.outputs.profile }} --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Get Build URL
+        id: build-url
+        working-directory: samaanai-mobile
+        run: |
+          BUILD_URL=$(eas build:list --platform android --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty')
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+          echo "✅ Android build submitted to EAS"
+          echo "📱 Build URL: $BUILD_URL"
+
+      - name: Comment on PR with build info
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📱 Mobile Build Started\n\n**Platform:** Android APK\n**Profile:** ${{ needs.determine-build.outputs.profile }}\n\nCheck build status at: https://expo.dev/accounts/[your-account]/projects/samaanai-mobile/builds`
+            })
+
+  build-ios:
+    name: Build iOS Simulator
+    needs: determine-build
+    if: needs.determine-build.outputs.should-build-ios == 'true' && needs.determine-build.outputs.profile == 'staging'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: samaanai-mobile/package-lock.json
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: samaanai-mobile
+        run: npm ci
+
+      - name: Build iOS Simulator
+        working-directory: samaanai-mobile
+        run: |
+          echo "Building iOS simulator for ${{ needs.determine-build.outputs.profile }} environment"
+          eas build --platform ios --profile ${{ needs.determine-build.outputs.profile }} --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Get Build URL
+        id: build-url
+        working-directory: samaanai-mobile
+        run: |
+          BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty')
+          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
+          echo "✅ iOS build submitted to EAS"
+          echo "📱 Build URL: $BUILD_URL"
+
+  notify-completion:
+    name: Notify Build Completion
+    needs: [determine-build, build-android, build-ios]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Summary
+        run: |
+          echo "## 📱 Mobile Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.determine-build.outputs.profile }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.build-android.result }}" == "success" ]; then
+            echo "✅ Android build submitted successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build-android.result }}" == "failure" ]; then
+            echo "❌ Android build failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.build-ios.result }}" == "success" ]; then
+            echo "✅ iOS build submitted successfully" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.build-ios.result }}" == "failure" ]; then
+            echo "❌ iOS build failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 Check build status on [Expo Dashboard](https://expo.dev)" >> $GITHUB_STEP_SUMMARY
