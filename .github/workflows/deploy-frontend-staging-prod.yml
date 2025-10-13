@@ -1,4 +1,4 @@
-name: Deploy Frontend to Cloud Run
+name: Deploy Web Frontend (Staging & Production)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - staging
     paths:
       - 'samaanai-mobile/**'
-      - '.github/workflows/frontend-deploy.yml'
+      - '.github/workflows/deploy-frontend-staging-prod.yml'
   workflow_dispatch:
     inputs:
       environment:

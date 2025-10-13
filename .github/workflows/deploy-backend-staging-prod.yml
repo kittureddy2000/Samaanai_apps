@@ -1,4 +1,4 @@
-name: Deploy Backend to Cloud Run
+name: Deploy Backend (Staging & Production)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - staging
     paths:
       - 'backend-express/**'
-      - '.github/workflows/backend-deploy.yml'
+      - '.github/workflows/deploy-backend-staging-prod.yml'
   workflow_dispatch:
     inputs:
       environment:

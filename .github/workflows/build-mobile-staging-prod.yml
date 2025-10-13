@@ -1,4 +1,4 @@
-name: Build Mobile Apps
+name: Build Mobile Apps (Staging & Production)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - 'samaanai-mobile/**'
-      - '.github/workflows/mobile-build.yml'
+      - '.github/workflows/build-mobile-staging-prod.yml'
   workflow_dispatch:
     inputs:
       platform:
