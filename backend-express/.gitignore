@@ -38,3 +38,6 @@ prisma/*.db-journal
 .cache/
 temp/
 tmp/
+
+# Cloud SQL Proxy
+cloud-sql-proxy
