@@ -2,9 +2,32 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:8080';
+// Robust API URL detection with multiple fallbacks
+const getApiBaseUrl = () => {
+  // Try multiple sources in order of preference
+  const sources = [
+    Constants.expoConfig?.extra?.API_BASE_URL,
+    Constants.manifest?.extra?.API_BASE_URL,
+    Constants.manifest2?.extra?.expoClient?.extra?.API_BASE_URL,
+    process.env.API_BASE_URL,
+    process.env.EXPO_PUBLIC_API_BASE_URL,
+  ];
 
-console.log('🔍 API Service - API_BASE_URL:', API_BASE_URL);
+  for (const url of sources) {
+    if (url && typeof url === 'string' && url.trim()) {
+      console.log('🔍 API Service - Using API_BASE_URL from:', url);
+      return url;
+    }
+  }
+
+  // Default fallback
+  const defaultUrl = 'https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app';
+  console.log('⚠️  API Service - Using default API_BASE_URL:', defaultUrl);
+  return defaultUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+console.log('🔍 API Service - Final API_BASE_URL:', API_BASE_URL);
 
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,

@@ -32,7 +32,7 @@ module.exports = {
       backgroundColor: "#ffffff"
     },
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL || "http://localhost:8080",
+      API_BASE_URL: process.env.API_BASE_URL || "https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app",
       eas: {
         projectId: "7b2ffe0d-3be0-459b-aec7-39e44d455cbd"
       }
