@@ -20,7 +20,8 @@ export default function LoginScreen({ navigation }) {
 
   console.log('🔍 Frontend API_URL:', API_URL);
   const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true,
+    scheme: 'samaanai',
+    useProxy: Platform.OS === 'web' ? false : !Constants.appOwnership || Constants.appOwnership === 'expo',
   });
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
