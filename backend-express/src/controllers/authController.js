@@ -286,11 +286,30 @@ exports.googleCallback = async (req, res, next) => {
       user: JSON.stringify(userWithProfile)
     });
 
-    // For web, redirect to localhost, for mobile use deep link
-    const redirectUrl = process.env.GOOGLE_SUCCESS_REDIRECT || 'http://localhost:8081';
+    // Detect client type from request
+    // Priority: req.clientType (set by route middleware) > user-agent fallback
+    const clientType = req.clientType || 'web';
+    const userAgent = req.headers['user-agent'] || '';
+    const isMobileApp = clientType === 'mobile' ||
+                        userAgent.toLowerCase().includes('expo') ||
+                        userAgent.toLowerCase().includes('samaanai');
+
+    // Choose redirect URL based on client type
+    let redirectUrl;
+    if (isMobileApp) {
+      // For mobile apps, use deep link scheme
+      redirectUrl = process.env.MOBILE_GOOGLE_SUCCESS_REDIRECT || 'samaanai://auth-callback';
+    } else {
+      // For web browsers, use HTTP URL
+      redirectUrl = process.env.GOOGLE_SUCCESS_REDIRECT || 'http://localhost:8081';
+    }
 
     console.log('🔍 OAuth Redirect Debug:');
+    console.log('  Client Type:', clientType);
+    console.log('  User-Agent:', userAgent);
+    console.log('  Is Mobile App:', isMobileApp);
     console.log('  GOOGLE_SUCCESS_REDIRECT env var:', process.env.GOOGLE_SUCCESS_REDIRECT);
+    console.log('  MOBILE_GOOGLE_SUCCESS_REDIRECT env var:', process.env.MOBILE_GOOGLE_SUCCESS_REDIRECT);
     console.log('  Final redirectUrl:', redirectUrl);
 
     res.redirect(`${redirectUrl}?${params.toString()}`);

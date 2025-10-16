@@ -39,15 +39,33 @@ router.post('/refresh', authController.refreshToken);
 router.post('/logout', authenticate, authController.logout);
 
 // Google OAuth routes
-router.get('/google', passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false
-}));
+router.get('/google', (req, res, next) => {
+  // Capture client parameter and pass it through state
+  const client = req.query.client || 'web';
+  const state = JSON.stringify({ client });
 
-router.get('/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: '/login' }),
-  authController.googleCallback
-);
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false,
+    state: state
+  })(req, res, next);
+});
+
+router.get('/google/callback', (req, res, next) => {
+  // Store state for later use
+  const state = req.query.state;
+  if (state) {
+    try {
+      const parsed = JSON.parse(state);
+      req.clientType = parsed.client;
+    } catch (e) {
+      // If parsing fails, keep as is
+      req.clientType = 'web';
+    }
+  }
+
+  passport.authenticate('google', { session: false, failureRedirect: '/login' })(req, res, next);
+}, authController.googleCallback);
 
 // WebAuthn / Passkey routes
 router.post('/passkey/register/begin', authenticate, authController.passkeyRegisterBegin);

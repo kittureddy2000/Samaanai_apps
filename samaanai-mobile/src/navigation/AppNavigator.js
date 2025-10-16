@@ -174,6 +174,28 @@ function AuthStack() {
   );
 }
 
+// Deep linking configuration
+const linking = {
+  prefixes: ['samaanai://', 'https://samaanai.com'],
+  config: {
+    screens: {
+      Auth: {
+        screens: {
+          Login: 'auth-callback',
+        }
+      },
+      Main: {
+        screens: {
+          Dashboard: 'dashboard',
+          Nutrition: 'nutrition',
+          Todo: 'todo',
+          Profile: 'profile',
+        }
+      }
+    }
+  }
+};
+
 // Root navigator
 export default function AppNavigator() {
   const { isAuthenticated, loading } = useAuth();
@@ -187,7 +209,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthStack} />

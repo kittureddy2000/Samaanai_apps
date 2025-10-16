@@ -23,7 +23,20 @@ module.exports = {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
-      edgeToEdgeEnabled: true
+      edgeToEdgeEnabled: true,
+      intentFilters: [
+        {
+          action: "android.intent.action.VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "samaanai",
+              host: "auth-callback"
+            }
+          ],
+          category: ["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE"]
+        }
+      ]
     },
     web: {
       favicon: "./assets/favicon.png",

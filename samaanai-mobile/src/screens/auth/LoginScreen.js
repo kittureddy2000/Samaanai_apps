@@ -86,8 +86,8 @@ export default function LoginScreen({ navigation }) {
         // For web, just redirect to the Google OAuth URL
         window.location.href = `${API_URL}/api/v1/auth/google`;
       } else {
-        // For mobile, use WebBrowser
-        const authUrl = `${API_URL}/api/v1/auth/google`;
+        // For mobile, use WebBrowser with client parameter to indicate mobile client
+        const authUrl = `${API_URL}/api/v1/auth/google?client=mobile`;
         const result = await WebBrowser.openAuthSessionAsync(
           authUrl,
           redirectUri
