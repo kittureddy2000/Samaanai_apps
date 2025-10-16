@@ -83,33 +83,53 @@ jobs:
           cache: 'npm'
           cache-dependency-path: samaanai-mobile/package-lock.json
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install dependencies
         working-directory: samaanai-mobile
         run: npm ci
 
-      - name: Build Android APK
+      - name: Generate native Android project
         working-directory: samaanai-mobile
         run: |
-          echo "Building Android APK for ${{ needs.determine-build.outputs.profile }} environment"
-          eas build --platform android --profile ${{ needs.determine-build.outputs.profile }} --non-interactive --no-wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo "🔧 Generating native Android project with expo prebuild"
+          npx expo prebuild --platform android --clean
 
-      - name: Get Build URL
-        id: build-url
-        working-directory: samaanai-mobile
+      - name: Make gradlew executable
+        working-directory: samaanai-mobile/android
+        run: chmod +x gradlew
+
+      - name: Build Android APK
+        working-directory: samaanai-mobile/android
         run: |
-          BUILD_URL=$(eas build:list --platform android --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty')
-          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
-          echo "✅ Android build submitted to EAS"
-          echo "📱 Build URL: $BUILD_URL"
+          echo "🏗️ Building Android APK for ${{ needs.determine-build.outputs.profile }} environment"
+          # Build debug APK (no signing required)
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-${{ needs.determine-build.outputs.profile }}-${{ github.sha }}
+          path: samaanai-mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Get APK info
+        id: apk-info
+        run: |
+          APK_PATH="samaanai-mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "✅ Android APK built successfully (Debug build)"
+          echo "📦 APK Size: $APK_SIZE"
+          echo "📱 Download from Actions artifacts"
+          echo "⚠️  Note: This is a debug build for testing. For production, use a signed release build."
 
       - name: Comment on PR with build info
         if: github.event_name == 'pull_request'
@@ -120,14 +140,14 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 📱 Mobile Build Started\n\n**Platform:** Android APK\n**Profile:** ${{ needs.determine-build.outputs.profile }}\n\nCheck build status at: https://expo.dev/accounts/[your-account]/projects/samaanai-mobile/builds`
+              body: `## 📱 Android APK Built Successfully\n\n**Profile:** ${{ needs.determine-build.outputs.profile }}\n**Size:** ${{ steps.apk-info.outputs.apk_size }}\n\nDownload the APK from the [Actions artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
             })
 
   build-ios:
     name: Build iOS Simulator
     needs: determine-build
     if: needs.determine-build.outputs.should-build-ios == 'true' && needs.determine-build.outputs.profile == 'staging'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -139,33 +159,32 @@ jobs:
           cache: 'npm'
           cache-dependency-path: samaanai-mobile/package-lock.json
 
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
       - name: Install dependencies
         working-directory: samaanai-mobile
         run: npm ci
 
-      - name: Build iOS Simulator
+      - name: Generate native iOS project
         working-directory: samaanai-mobile
         run: |
-          echo "Building iOS simulator for ${{ needs.determine-build.outputs.profile }} environment"
-          eas build --platform ios --profile ${{ needs.determine-build.outputs.profile }} --non-interactive --no-wait
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          echo "🔧 Generating native iOS project with expo prebuild"
+          npx expo prebuild --platform ios --clean
 
-      - name: Get Build URL
-        id: build-url
-        working-directory: samaanai-mobile
+      - name: Install CocoaPods dependencies
+        working-directory: samaanai-mobile/ios
+        run: pod install
+
+      - name: Build iOS app
+        working-directory: samaanai-mobile/ios
         run: |
-          BUILD_URL=$(eas build:list --platform ios --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl // empty')
-          echo "build_url=$BUILD_URL" >> $GITHUB_OUTPUT
-          echo "✅ iOS build submitted to EAS"
-          echo "📱 Build URL: $BUILD_URL"
+          echo "🏗️ Building iOS app for ${{ needs.determine-build.outputs.profile }} environment"
+          xcodebuild -workspace samaanaimobile.xcworkspace -scheme samaanaimobile -configuration Release -sdk iphonesimulator -derivedDataPath build
+
+      - name: Upload iOS app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app-${{ needs.determine-build.outputs.profile }}-${{ github.sha }}
+          path: samaanai-mobile/ios/build/Build/Products/Release-iphonesimulator/samaanaimobile.app
+          retention-days: 30
 
   notify-completion:
     name: Notify Build Completion
