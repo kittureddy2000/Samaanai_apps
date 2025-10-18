@@ -94,7 +94,10 @@ echo "  Staging:"
 echo "    https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app/api/v1/auth/google/callback"
 echo ""
 echo "  Production:"
-echo "    https://samaanai-backend.run.app/api/v1/auth/google/callback"
+echo "    https://api.samaanai.com/api/v1/auth/google/callback"
+echo ""
+echo "  Authorized JavaScript Origins:"
+echo "    https://mobile.samaanai.com"
 echo ""
 
 exit 0
