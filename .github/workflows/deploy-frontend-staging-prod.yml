@@ -54,7 +54,7 @@ jobs:
           # Set service name based on environment
           if [[ "$ENV" == "production" ]]; then
             echo "service-name=samaanai-frontend" >> $GITHUB_OUTPUT
-            echo "api-url=https://samaanai-backend.run.app" >> $GITHUB_OUTPUT
+            echo "api-url=https://api.samaanai.com" >> $GITHUB_OUTPUT
           else
             echo "service-name=samaanai-frontend-staging" >> $GITHUB_OUTPUT
             echo "api-url=https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app" >> $GITHUB_OUTPUT
