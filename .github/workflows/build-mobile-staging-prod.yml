@@ -83,53 +83,29 @@ jobs:
           cache: 'npm'
           cache-dependency-path: samaanai-mobile/package-lock.json
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
         with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
         working-directory: samaanai-mobile
         run: npm ci
 
-      - name: Generate native Android project
+      - name: Build Android APK with EAS
         working-directory: samaanai-mobile
         run: |
-          echo "🔧 Generating native Android project with expo prebuild"
-          npx expo prebuild --platform android --clean
+          echo "🏗️ Building Android APK for ${{ needs.determine-build.outputs.profile }} environment using EAS Build"
+          eas build --platform android --profile ${{ needs.determine-build.outputs.profile }} --non-interactive --no-wait
 
-      - name: Make gradlew executable
-        working-directory: samaanai-mobile/android
-        run: chmod +x gradlew
-
-      - name: Build Android APK
-        working-directory: samaanai-mobile/android
-        run: |
-          echo "🏗️ Building Android APK for ${{ needs.determine-build.outputs.profile }} environment"
-          # Build debug APK (no signing required)
-          ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk-${{ needs.determine-build.outputs.profile }}-${{ github.sha }}
-          path: samaanai-mobile/android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: Get APK info
+      - name: Get EAS Build Info
         id: apk-info
         run: |
-          APK_PATH="samaanai-mobile/android/app/build/outputs/apk/debug/app-debug.apk"
-          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
-          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
-          echo "✅ Android APK built successfully (Debug build)"
-          echo "📦 APK Size: $APK_SIZE"
-          echo "📱 Download from Actions artifacts"
-          echo "⚠️  Note: This is a debug build for testing. For production, use a signed release build."
+          echo "✅ EAS Build submitted successfully"
+          echo "📱 Build Profile: ${{ needs.determine-build.outputs.profile }}"
+          echo "🔗 Check build status on Expo Dashboard: https://expo.dev/accounts/$(eas whoami)/projects/samaanai-mobile/builds"
+          echo "apk_size=Building on EAS..." >> $GITHUB_OUTPUT
 
       - name: Comment on PR with build info
         if: github.event_name == 'pull_request'
