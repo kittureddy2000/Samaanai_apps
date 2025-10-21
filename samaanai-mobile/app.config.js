@@ -24,6 +24,12 @@ module.exports = {
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true,
+      permissions: [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
       intentFilters: [
         {
           action: "android.intent.action.VIEW",
@@ -50,6 +56,15 @@ module.exports = {
       eas: {
         projectId: "7b2ffe0d-3be0-459b-aec7-39e44d455cbd"
       }
-    }
+    },
+    plugins: [
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "The app needs access to your photos to attach images to tasks.",
+          cameraPermission: "The app needs access to your camera to take photos for tasks."
+        }
+      ]
+    ]
   }
 };
