@@ -33,8 +33,12 @@
       }
     },
     "production": {
+      "distribution": "internal",
       "env": {
         "API_BASE_URL": "https://api.samaanai.com"
+      },
+      "android": {
+        "buildType": "apk"
       }
     }
   },
