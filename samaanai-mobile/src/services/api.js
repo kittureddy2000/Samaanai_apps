@@ -192,7 +192,10 @@ export const api = {
   getPreferences: () => apiClient.get('/user/preferences'),
 
   updatePreferences: (preferences) =>
-    apiClient.put('/user/preferences', preferences)
+    apiClient.put('/user/preferences', preferences),
+
+  registerPushToken: (pushToken) =>
+    apiClient.post('/user/push-token', { pushToken })
 };
 
 export default api;

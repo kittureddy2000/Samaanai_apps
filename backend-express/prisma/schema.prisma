@@ -33,17 +33,22 @@ model User {
 }
 
 model UserProfile {
-  id              String   @id @default(uuid())
-  userId          String   @unique @map("user_id")
-  height          Float?
-  weight          Float?
-  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
-  timezone        String   @default("US/Pacific")
-  startOfWeek     Int      @default(2) @map("start_of_week")
-  metabolicRate   Int?     @map("metabolic_rate")
-  weightLossGoal  Float    @default(0) @map("weight_loss_goal")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  height                Float?
+  weight                Float?
+  dateOfBirth           DateTime? @map("date_of_birth") @db.Date
+  timezone              String   @default("US/Pacific")
+  startOfWeek           Int      @default(2) @map("start_of_week")
+  metabolicRate         Int?     @map("metabolic_rate")
+  weightLossGoal        Float    @default(0) @map("weight_loss_goal")
+  notifications         Boolean  @default(true)
+  emailNotifications    Boolean  @default(true) @map("email_notifications")
+  weeklyReports         Boolean  @default(true) @map("weekly_reports")
+  darkMode              Boolean  @default(false) @map("dark_mode")
+  pushToken             String?  @map("push_token")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

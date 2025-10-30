@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Title, Button, TextInput, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, Card, Title, Button, TextInput, ActivityIndicator, Snackbar } from 'react-native-paper';
 import { api } from '../../services/api';
 import { format, subDays, addDays } from 'date-fns';
 
@@ -10,6 +10,9 @@ export default function DailyEntryScreen({ navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dailyReport, setDailyReport] = useState(null);
   const [error, setError] = useState(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState('success'); // 'success' or 'error'
 
   const [formValues, setFormValues] = useState({
     breakfast: '',
@@ -149,12 +152,21 @@ export default function DailyEntryScreen({ navigation }) {
         await api.createWeightEntry(weightData);
       }
 
-      Alert.alert('Success', 'Entries saved successfully!');
+      setSnackbarMessage('Entries saved successfully!');
+      setSnackbarType('success');
+      setSnackbarVisible(true);
       await fetchDailyReport();
+
+      // Navigate to Dashboard after a short delay to show the snackbar
+      setTimeout(() => {
+        navigation.navigate('Dashboard');
+      }, 1500);
     } catch (err) {
       console.error('Error submitting entries:', err);
       setError('Failed to save entries. Please try again.');
-      Alert.alert('Error', err.response?.data?.error || 'Failed to save entries. Please try again.');
+      setSnackbarMessage(err.response?.data?.error || 'Failed to save entries. Please try again.');
+      setSnackbarType('error');
+      setSnackbarVisible(true);
     } finally {
       setSaving(false);
     }
@@ -286,6 +298,22 @@ export default function DailyEntryScreen({ navigation }) {
           </Button>
         </Card.Content>
       </Card>
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        action={{
+          label: 'Dismiss',
+          onPress: () => setSnackbarVisible(false),
+        }}
+        style={[
+          styles.snackbar,
+          snackbarType === 'error' ? styles.snackbarError : styles.snackbarSuccess
+        ]}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </ScrollView>
   );
 }
@@ -364,5 +392,18 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16
+  },
+  snackbar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000
+  },
+  snackbarSuccess: {
+    backgroundColor: '#4caf50'
+  },
+  snackbarError: {
+    backgroundColor: '#d32f2f'
   }
 });

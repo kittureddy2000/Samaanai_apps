@@ -10,5 +10,6 @@ router.get('/profile', userController.getProfile);
 router.put('/profile', userController.updateProfile);
 router.get('/preferences', userController.getPreferences);
 router.put('/preferences', userController.updatePreferences);
+router.post('/push-token', userController.registerPushToken);
 
 module.exports = router;

@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const nutritionRoutes = require('./routes/nutrition');
 const todoRoutes = require('./routes/todo');
 const userRoutes = require('./routes/user');
+const testRoutes = require('./routes/test');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -64,6 +65,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/nutrition', nutritionRoutes);
 app.use('/api/v1/todo', todoRoutes);
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/test', testRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -93,6 +95,10 @@ if (require.main === module) {
     console.log(`🚀 Samaanai API running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+
+    // Initialize scheduled jobs
+    const { initializeScheduler } = require('./services/schedulerService');
+    initializeScheduler();
   });
 }
 

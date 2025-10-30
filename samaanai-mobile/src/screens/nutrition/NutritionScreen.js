@@ -116,10 +116,10 @@ export default function NutritionScreen({ navigation }) {
       return Math.max(0, food - exercise);
     });
 
-    // Net calories (what's left after accounting for BMR goal)
+    // Net calories (preserve sign for color coding)
     const netData = sortedEntries.map(entry => {
       const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      return hasData ? Math.abs(entry.net_calories || 0) : 0;
+      return hasData ? (entry.net_calories || 0) : 0;
     });
 
     return { labels, consumedData, netData };
@@ -222,9 +222,16 @@ export default function NutritionScreen({ navigation }) {
                     {chartData.labels.map((label, index) => {
                       const consumed = chartData.consumedData[index];
                       const net = chartData.netData[index];
-                      const maxValue = Math.max(...chartData.consumedData, ...chartData.netData);
+                      const absNet = Math.abs(net);
+
+                      // Calculate max value using absolute values for proper scaling
+                      const allAbsValues = chartData.netData.map(n => Math.abs(n));
+                      const maxValue = Math.max(...chartData.consumedData, ...allAbsValues, 1);
                       const consumedHeight = (consumed / maxValue) * 120;
-                      const netHeight = (net / maxValue) * 120;
+                      const netHeight = (absNet / maxValue) * 120;
+
+                      // Determine net bar color: red if negative (over goal/surplus), green if positive (under goal/deficit)
+                      const netBarColor = net < 0 ? '#f44336' : net > 0 ? '#4caf50' : '#999';
 
                       return (
                         <View key={index} style={styles.barGroup}>
@@ -234,8 +241,8 @@ export default function NutritionScreen({ navigation }) {
                               <Text style={styles.barValue}>{consumed}</Text>
                             </View>
                             <View style={styles.barWrapper}>
-                              <View style={[styles.bar, styles.netBar, { height: netHeight }]} />
-                              <Text style={styles.barValue}>{net}</Text>
+                              <View style={[styles.bar, { backgroundColor: netBarColor, height: netHeight }]} />
+                              <Text style={styles.barValue}>{absNet}</Text>
                             </View>
                           </View>
                           <Text style={styles.barLabel}>{label}</Text>
@@ -249,15 +256,19 @@ export default function NutritionScreen({ navigation }) {
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendColor, { backgroundColor: '#2196F3' }]} />
-                <Text style={styles.legendText}>Consumed (Food-Exercise)</Text>
+                <Text style={styles.legendText}>Consumed</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FF9800' }]} />
-                <Text style={styles.legendText}>Net Calories</Text>
+                <View style={[styles.legendColor, { backgroundColor: '#f44336' }]} />
+                <Text style={styles.legendText}>Over Goal</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: '#4caf50' }]} />
+                <Text style={styles.legendText}>Under Goal</Text>
               </View>
             </View>
             <Text style={styles.chartHelpText}>
-              Net calories show how much over (higher bar) or under (lower bar) your daily goal you are
+              Red bars show you're over your daily goal (surplus), green bars show you're under (deficit)
             </Text>
           </Card.Content>
         </Card>

@@ -1,6 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { PrismaClient } = require('@prisma/client');
+const { sendWelcomeEmail } = require('../services/emailService');
 
 const prisma = new PrismaClient();
 
@@ -46,6 +47,12 @@ passport.use(
               create: {}
             }
           }
+        });
+
+        // Send welcome email (async, don't wait for it)
+        sendWelcomeEmail(user).catch(error => {
+          console.error('Failed to send welcome email:', error);
+          // Don't fail OAuth if email fails
         });
 
         return done(null, user);

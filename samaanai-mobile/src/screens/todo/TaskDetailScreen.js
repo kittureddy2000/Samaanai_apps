@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Alert, Linking, TouchableOpacity, Platform } from 'react-native';
 import { Text, Card, Title, Button, ActivityIndicator, Chip, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 
@@ -59,6 +60,61 @@ export default function TaskDetailScreen({ route, navigation }) {
         }
       ]
     );
+  };
+
+  const isImageFile = (url) => {
+    if (!url) return false;
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const lowerUrl = url.toLowerCase();
+    return imageExtensions.some(ext => lowerUrl.includes(ext)) || lowerUrl.startsWith('data:image');
+  };
+
+  const getFileIcon = (url) => {
+    if (!url) return 'file-document';
+
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('.pdf')) return 'file-pdf-box';
+    if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return 'file-word-box';
+    if (lowerUrl.includes('.xls') || lowerUrl.includes('.xlsx')) return 'file-excel-box';
+    if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return 'file-powerpoint-box';
+    if (lowerUrl.includes('.txt')) return 'file-document-outline';
+    if (lowerUrl.includes('.zip') || lowerUrl.includes('.rar')) return 'zip-box';
+
+    return 'file-document';
+  };
+
+  const getFileName = (url) => {
+    if (!url) return 'Attachment';
+    const parts = url.split('/');
+    return parts[parts.length - 1] || 'Attachment';
+  };
+
+  const handleOpenFile = async (url) => {
+    try {
+      if (Platform.OS === 'web') {
+        // For web, open in new tab or download
+        if (url.startsWith('data:')) {
+          // Data URL - download it
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = getFileName(url);
+          link.click();
+        } else {
+          // Regular URL - open in new tab
+          window.open(url, '_blank');
+        }
+      } else {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert('Error', 'Cannot open this file type');
+        }
+      }
+    } catch (err) {
+      console.error('Error opening file:', err);
+      Alert.alert('Error', 'Failed to open file');
+    }
   };
 
   if (loading) {
@@ -145,12 +201,36 @@ export default function TaskDetailScreen({ route, navigation }) {
 
             {task.imageUrl && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Image</Text>
-                <Image
-                  source={{ uri: task.imageUrl }}
-                  style={styles.taskImage}
-                  resizeMode="cover"
-                />
+                <Text style={styles.sectionTitle}>Attachment</Text>
+                {isImageFile(task.imageUrl) ? (
+                  <Image
+                    source={{ uri: task.imageUrl }}
+                    style={styles.taskImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <TouchableOpacity
+                    style={styles.fileAttachment}
+                    onPress={() => handleOpenFile(task.imageUrl)}
+                  >
+                    <MaterialCommunityIcons
+                      name={getFileIcon(task.imageUrl)}
+                      size={48}
+                      color="#1976d2"
+                    />
+                    <View style={styles.fileInfo}>
+                      <Text style={styles.fileName} numberOfLines={2}>
+                        {getFileName(task.imageUrl)}
+                      </Text>
+                      <Text style={styles.fileAction}>Tap to open</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                      name="open-in-new"
+                      size={24}
+                      color="#666"
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -314,6 +394,30 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     marginTop: 8
+  },
+  fileAttachment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginTop: 8,
+    gap: 12
+  },
+  fileInfo: {
+    flex: 1
+  },
+  fileName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4
+  },
+  fileAction: {
+    fontSize: 12,
+    color: '#1976d2'
   },
   actionButton: {
     marginVertical: 8

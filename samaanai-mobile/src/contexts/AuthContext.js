@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { registerForPushNotificationsAsync } from '../services/notificationService';
 
 const AuthContext = createContext();
 
@@ -21,11 +22,27 @@ export const AuthProvider = ({ children }) => {
       if (storedUser && token) {
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
+        // Register push token for existing session
+        await registerPushToken();
       }
     } catch (error) {
       console.error('Error loading user:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const registerPushToken = async () => {
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        console.log('Registering push token with backend:', pushToken);
+        await api.registerPushToken(pushToken);
+        console.log('Push token registered successfully');
+      }
+    } catch (error) {
+      // Don't fail authentication if push token registration fails
+      console.error('Error registering push token:', error);
     }
   };
 
@@ -43,6 +60,9 @@ export const AuthProvider = ({ children }) => {
 
       setUser(data.user);
       setIsAuthenticated(true);
+
+      // Register push token after successful login
+      await registerPushToken();
 
       return { success: true };
     } catch (error) {
@@ -81,6 +101,9 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       setIsAuthenticated(true);
 
+      // Register push token after successful registration
+      await registerPushToken();
+
       return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
@@ -113,6 +136,9 @@ export const AuthProvider = ({ children }) => {
 
       setUser(user);
       setIsAuthenticated(true);
+
+      // Register push token after successful Google login
+      await registerPushToken();
 
       return { success: true };
     } catch (error) {

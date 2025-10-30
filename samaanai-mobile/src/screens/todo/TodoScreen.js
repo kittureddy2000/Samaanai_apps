@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Text, Card, Title, Button, ActivityIndicator, FAB, Chip, Checkbox } from 'react-native-paper';
+import { Text, Card, Button, ActivityIndicator, FAB, Chip, Menu } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
@@ -12,17 +13,58 @@ export default function TodoScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed'
+  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed', 'overdue'
+  const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'name', 'createdAt'
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
   const fetchTasks = async () => {
     try {
       setError(null);
-      const params = filter === 'all' ? {} : { completed: filter === 'completed' };
+      let params = {};
+
+      if (filter === 'pending') {
+        params.completed = false;
+      } else if (filter === 'completed') {
+        params.completed = true;
+      }
+      // 'all' and 'overdue' fetch all tasks, filtering happens client-side for overdue
+
       const { data } = await api.getTasks(params);
-      setTasks(data.tasks);
+      let filteredTasks = data.tasks;
+
+      // Filter overdue tasks client-side
+      if (filter === 'overdue') {
+        filteredTasks = filteredTasks.filter(task => {
+          return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+        });
+      }
+
+      // Sort tasks
+      const sortedTasks = sortTasks(filteredTasks, sortBy);
+      setTasks(sortedTasks);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load tasks');
       console.error('Tasks error:', err);
+    }
+  };
+
+  const sortTasks = (tasksList, sortMethod) => {
+    const sorted = [...tasksList];
+
+    switch (sortMethod) {
+      case 'dueDate':
+        return sorted.sort((a, b) => {
+          // Tasks without due date go to the end
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate) - new Date(b.dueDate);
+        });
+      case 'name':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case 'createdAt':
+        return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      default:
+        return sorted;
     }
   };
 
@@ -44,7 +86,7 @@ export default function TodoScreen({ navigation }) {
 
   useEffect(() => {
     fetchAllData();
-  }, [filter]);
+  }, [filter, sortBy]);
 
   useEffect(() => {
     if (isFocused) {
@@ -97,61 +139,84 @@ export default function TodoScreen({ navigation }) {
 
   const renderTaskCard = (task) => {
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+    const hasMeta = task.dueDate || task.reminderType;
+    const hasAttachment = task.imageUrl && task.imageUrl.trim() !== '';
 
     return (
       <Card key={task.id} style={[styles.taskCard, task.completed && styles.completedTask]}>
-        <Card.Content>
+        <Card.Content style={styles.compactCardContent}>
           <View style={styles.taskHeader}>
-            <Checkbox
-              status={task.completed ? 'checked' : 'unchecked'}
-              onPress={() => handleToggleTask(task.id)}
-            />
+            <TouchableOpacity onPress={() => handleToggleTask(task.id)} style={styles.checkboxContainer}>
+              <MaterialCommunityIcons
+                name={task.completed ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                size={24}
+                color={task.completed ? '#4caf50' : '#999'}
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.taskContent}
               onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
             >
-              <Text style={[styles.taskName, task.completed && styles.completedText]}>
-                {task.name}
-              </Text>
+              <View style={styles.taskNameRow}>
+                <Text style={[styles.taskName, task.completed && styles.completedText]}>
+                  {task.name}
+                </Text>
+                {hasAttachment && (
+                  <MaterialCommunityIcons
+                    name="paperclip"
+                    size={14}
+                    color="#666"
+                    style={styles.attachmentIcon}
+                  />
+                )}
+              </View>
               {task.description && (
                 <Text style={styles.taskDescription} numberOfLines={2}>
                   {task.description}
                 </Text>
               )}
-              <View style={styles.taskMeta}>
-                {task.dueDate && (
-                  <Chip
-                    mode="outlined"
-                    compact
-                    style={[styles.chip, isOverdue && styles.overdueChip]}
-                    textStyle={[styles.chipText, isOverdue && styles.overdueText]}
-                  >
-                    {format(new Date(task.dueDate), 'MMM dd, yyyy')}
-                  </Chip>
-                )}
-                {task.reminderType && (
-                  <Chip mode="outlined" compact style={styles.chip} textStyle={styles.chipText}>
-                    {task.reminderType}
-                  </Chip>
-                )}
-              </View>
+              {hasMeta && (
+                <View style={styles.taskMeta}>
+                  {task.dueDate && (
+                    <View style={styles.metaItem}>
+                      <MaterialCommunityIcons
+                        name="calendar"
+                        size={12}
+                        color={isOverdue ? '#d32f2f' : '#666'}
+                      />
+                      <Text style={[styles.metaText, isOverdue && styles.overdueText]}>
+                        {format(new Date(task.dueDate), 'MMM dd')}
+                      </Text>
+                    </View>
+                  )}
+                  {task.reminderType && (
+                    <View style={styles.metaItem}>
+                      <MaterialCommunityIcons
+                        name="bell"
+                        size={12}
+                        color="#666"
+                      />
+                      <Text style={styles.metaText}>
+                        {task.reminderType}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </TouchableOpacity>
             <View style={styles.taskActions}>
-              <Button
-                mode="text"
-                compact
+              <TouchableOpacity
                 onPress={() => navigation.navigate('EditTask', { task })}
+                style={styles.iconButton}
               >
-                Edit
-              </Button>
-              <Button
-                mode="text"
-                compact
-                textColor="#d32f2f"
+                <MaterialCommunityIcons name="pencil" size={20} color="#1976d2" />
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => handleDeleteTask(task.id)}
+                style={styles.iconButton}
               >
-                Delete
-              </Button>
+                <MaterialCommunityIcons name="delete" size={20} color="#d32f2f" />
+              </TouchableOpacity>
             </View>
           </View>
         </Card.Content>
@@ -166,53 +231,107 @@ export default function TodoScreen({ navigation }) {
         <Card style={styles.statsCard}>
           <Card.Content>
             <View style={styles.statsRow}>
-              <View style={styles.statItem}>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => setFilter('all')}
+              >
                 <Text style={styles.statValue}>{stats.total}</Text>
                 <Text style={styles.statLabel}>Total</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => setFilter('pending')}
+              >
                 <Text style={[styles.statValue, styles.pendingValue]}>{stats.pending}</Text>
                 <Text style={styles.statLabel}>Pending</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => setFilter('completed')}
+              >
                 <Text style={[styles.statValue, styles.completedValue]}>{stats.completed}</Text>
                 <Text style={styles.statLabel}>Completed</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => setFilter('overdue')}
+              >
                 <Text style={[styles.statValue, styles.overdueValue]}>{stats.overdue}</Text>
                 <Text style={styles.statLabel}>Overdue</Text>
-              </View>
+              </TouchableOpacity>
             </View>
           </Card.Content>
         </Card>
       )}
 
-      {/* Filter Chips */}
+      {/* Filter and Sort Row */}
       <View style={styles.filterContainer}>
-        <Chip
-          mode={filter === 'all' ? 'flat' : 'outlined'}
-          selected={filter === 'all'}
-          onPress={() => setFilter('all')}
-          style={styles.filterChip}
+        <View style={styles.filterChipsRow}>
+          <Chip
+            mode={filter === 'all' ? 'flat' : 'outlined'}
+            selected={filter === 'all'}
+            onPress={() => setFilter('all')}
+            style={styles.filterChip}
+          >
+            All
+          </Chip>
+          <Chip
+            mode={filter === 'pending' ? 'flat' : 'outlined'}
+            selected={filter === 'pending'}
+            onPress={() => setFilter('pending')}
+            style={styles.filterChip}
+          >
+            Pending
+          </Chip>
+          <Chip
+            mode={filter === 'completed' ? 'flat' : 'outlined'}
+            selected={filter === 'completed'}
+            onPress={() => setFilter('completed')}
+            style={styles.filterChip}
+          >
+            Completed
+          </Chip>
+        </View>
+        <Menu
+          visible={sortMenuVisible}
+          onDismiss={() => setSortMenuVisible(false)}
+          anchor={
+            <Button
+              mode="outlined"
+              onPress={() => setSortMenuVisible(true)}
+              icon="sort"
+              compact
+              style={styles.sortButton}
+            >
+              Sort
+            </Button>
+          }
         >
-          All
-        </Chip>
-        <Chip
-          mode={filter === 'pending' ? 'flat' : 'outlined'}
-          selected={filter === 'pending'}
-          onPress={() => setFilter('pending')}
-          style={styles.filterChip}
-        >
-          Pending
-        </Chip>
-        <Chip
-          mode={filter === 'completed' ? 'flat' : 'outlined'}
-          selected={filter === 'completed'}
-          onPress={() => setFilter('completed')}
-          style={styles.filterChip}
-        >
-          Completed
-        </Chip>
+          <Menu.Item
+            onPress={() => {
+              setSortBy('dueDate');
+              setSortMenuVisible(false);
+            }}
+            title="Due Date"
+            leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+          />
+          <Menu.Item
+            onPress={() => {
+              setSortBy('name');
+              setSortMenuVisible(false);
+            }}
+            title="Name"
+            leadingIcon={sortBy === 'name' ? 'check' : undefined}
+          />
+          <Menu.Item
+            onPress={() => {
+              setSortBy('createdAt');
+              setSortMenuVisible(false);
+            }}
+            title="Created Date"
+            leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
+          />
+        </Menu>
       </View>
 
       {/* Tasks List */}
@@ -235,6 +354,7 @@ export default function TodoScreen({ navigation }) {
       <FAB
         style={styles.fab}
         icon="plus"
+        color="#ffffff"
         onPress={() => navigation.navigate('AddTask')}
       />
     </View>
@@ -267,18 +387,19 @@ const styles = StyleSheet.create({
     marginTop: 8
   },
   statsCard: {
-    margin: 16,
-    marginBottom: 8
+    margin: 12,
+    marginBottom: 6
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around'
   },
   statItem: {
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingVertical: 4
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1976d2'
   },
@@ -292,71 +413,111 @@ const styles = StyleSheet.create({
     color: '#d32f2f'
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#666',
-    marginTop: 4
+    marginTop: 2
   },
   filterContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingBottom: 6,
     gap: 8
   },
+  filterChipsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flex: 1
+  },
   filterChip: {
-    marginHorizontal: 4
+    marginHorizontal: 2,
+    height: 32
+  },
+  sortButton: {
+    marginLeft: 8,
+    height: 32
   },
   tasksList: {
     flex: 1
   },
   taskCard: {
-    margin: 16,
-    marginBottom: 8
+    marginHorizontal: 12,
+    marginVertical: 4
   },
   completedTask: {
     opacity: 0.7
+  },
+  compactCardContent: {
+    paddingVertical: 6,
+    paddingHorizontal: 10
   },
   taskHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start'
   },
+  checkboxContainer: {
+    padding: 2,
+    marginRight: 4
+  },
   taskContent: {
     flex: 1,
-    marginLeft: 8
+    marginLeft: 6
+  },
+  taskNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
   },
   taskName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4
+    marginBottom: 1,
+    flex: 1
+  },
+  attachmentIcon: {
+    marginLeft: 2,
+    marginTop: -2
   },
   completedText: {
     textDecorationLine: 'line-through',
     color: '#999'
   },
   taskDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginBottom: 8
+    marginBottom: 4,
+    marginTop: 1
   },
   taskMeta: {
     flexDirection: 'row',
     gap: 8,
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    marginTop: 4,
+    alignItems: 'center'
   },
-  chip: {
-    height: 28
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3
   },
-  chipText: {
-    fontSize: 12
-  },
-  overdueChip: {
-    borderColor: '#d32f2f'
+  metaText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500'
   },
   overdueText: {
-    color: '#d32f2f'
+    color: '#d32f2f',
+    fontWeight: '600'
   },
   taskActions: {
-    marginLeft: 8
+    flexDirection: 'row',
+    gap: 4,
+    marginLeft: 6
+  },
+  iconButton: {
+    padding: 4
   },
   emptyState: {
     alignItems: 'center',
@@ -377,7 +538,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: 16,
-    backgroundColor: '#1976d2'
+    backgroundColor: '#4caf50',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
   },
   bottomSpacer: {
     height: 80

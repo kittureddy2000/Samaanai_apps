@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { prisma } = require('../config/database');
 const { validationResult } = require('express-validator');
+const { sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeNotification } = require('../services/pushNotificationService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -74,6 +76,12 @@ exports.register = async (req, res, next) => {
 
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user.id);
+
+    // Send welcome email (async, don't wait for it)
+    sendWelcomeEmail(user).catch(error => {
+      console.error('Failed to send welcome email:', error);
+      // Don't fail registration if email fails
+    });
 
     res.status(201).json({
       user,
