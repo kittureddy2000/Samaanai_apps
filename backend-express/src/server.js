@@ -11,7 +11,7 @@ const authRoutes = require('./routes/auth');
 const nutritionRoutes = require('./routes/nutrition');
 const todoRoutes = require('./routes/todo');
 const userRoutes = require('./routes/user');
-const testRoutes = require('./routes/test');
+const emailTestRoutes = require('./routes/emailTest');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -65,7 +65,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/nutrition', nutritionRoutes);
 app.use('/api/v1/todo', todoRoutes);
 app.use('/api/v1/user', userRoutes);
-app.use('/api/v1/test', testRoutes);
+app.use('/api/v1/test', emailTestRoutes);
 
 // 404 handler
 app.use((req, res) => {
