@@ -17,6 +17,13 @@ const parseLocalDate = (dateString) => {
   return new Date(year, month - 1, day);
 };
 
+const formatCalories = (value) => {
+  if (value >= 1000) {
+    return (value / 1000).toFixed(1) + 'k';
+  }
+  return value.toString();
+};
+
 export default function NutritionScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -238,11 +245,11 @@ export default function NutritionScreen({ navigation }) {
                           <View style={styles.barPair}>
                             <View style={styles.barWrapper}>
                               <View style={[styles.bar, styles.consumedBar, { height: consumedHeight }]} />
-                              <Text style={styles.barValue}>{consumed}</Text>
+                              <Text style={styles.barValue}>{formatCalories(consumed)}</Text>
                             </View>
                             <View style={styles.barWrapper}>
                               <View style={[styles.bar, { backgroundColor: netBarColor, height: netHeight }]} />
-                              <Text style={styles.barValue}>{absNet}</Text>
+                              <Text style={styles.barValue}>{formatCalories(absNet)}</Text>
                             </View>
                           </View>
                           <Text style={styles.barLabel}>{label}</Text>
@@ -349,19 +356,19 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   card: {
-    margin: 16,
-    marginBottom: 8
+    margin: 12,
+    marginBottom: 6
   },
   calorieOverview: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 16
+    marginVertical: 12
   },
   calorieItem: {
     alignItems: 'center'
   },
   calorieValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1976d2'
   },
@@ -377,12 +384,12 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   progressContainer: {
-    marginTop: 16
+    marginTop: 12
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: 6
   },
   progressLabel: {
     fontSize: 14,
@@ -403,17 +410,17 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   quickActions: {
-    marginTop: 12,
-    gap: 8
+    marginTop: 8,
+    gap: 6
   },
   actionButton: {
-    marginVertical: 4
+    marginVertical: 2
   },
   logButton: {
-    paddingVertical: 8
+    paddingVertical: 4
   },
   logButtonContent: {
-    paddingVertical: 8
+    paddingVertical: 4
   },
   cardHeader: {
     flexDirection: 'row',

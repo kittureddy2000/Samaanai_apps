@@ -12,7 +12,7 @@ const rateLimiter = (req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutes
-  const maxRequests = 100;
+  const maxRequests = 1000; // Increased for mobile app usage
 
   if (!rateLimit[ip]) {
     rateLimit[ip] = {

@@ -19,6 +19,13 @@ const parseLocalDate = (dateString) => {
   return new Date(year, month - 1, day);
 };
 
+const formatCalories = (value) => {
+  if (value >= 1000) {
+    return (value / 1000).toFixed(1) + 'k';
+  }
+  return value.toString();
+};
+
 export default function DashboardScreen({ navigation }) {
   const theme = useTheme();
   const isFocused = useIsFocused();
@@ -241,11 +248,11 @@ export default function DashboardScreen({ navigation }) {
                                 <View style={styles.barPair}>
                                   <View style={styles.barWrapper}>
                                     <View style={[styles.bar, styles.consumedBar, { height: consumedHeight }]} />
-                                    <Text style={styles.barValue}>{consumed}</Text>
+                                    <Text style={styles.barValue}>{formatCalories(consumed)}</Text>
                                   </View>
                                   <View style={styles.barWrapper}>
                                     <View style={[styles.bar, { backgroundColor: netBarColor, height: netHeight }]} />
-                                    <Text style={styles.barValue}>{absNet}</Text>
+                                    <Text style={styles.barValue}>{formatCalories(absNet)}</Text>
                                   </View>
                                 </View>
                                 <Text style={styles.barLabel}>{label}</Text>

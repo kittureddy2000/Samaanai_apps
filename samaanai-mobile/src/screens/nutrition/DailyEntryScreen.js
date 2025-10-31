@@ -360,35 +360,36 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   card: {
-    margin: 16,
-    marginBottom: 8
+    margin: 12,
+    marginBottom: 6
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 16
+    marginTop: 12
   },
   statBox: {
     alignItems: 'center'
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1976d2'
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginTop: 4
+    marginTop: 2
   },
   inputLabel: {
-    fontSize: 14,
-    marginTop: 12,
-    marginBottom: 4,
+    fontSize: 13,
+    marginTop: 8,
+    marginBottom: 2,
     color: '#666'
   },
   input: {
-    marginBottom: 8
+    marginBottom: 4,
+    height: 45
   },
   submitButton: {
     marginTop: 16
