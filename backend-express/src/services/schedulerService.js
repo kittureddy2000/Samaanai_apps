@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { prisma } = require('../config/database');
-const { sendWeeklyReportEmail } = require('./emailService');
-const { sendWeeklyReportNotification } = require('./pushNotificationService');
+const { sendWeeklyReportEmail, sendCalorieReminderEmail } = require('./emailService');
+const { sendWeeklyReportNotification, sendCalorieReminderNotification } = require('./pushNotificationService');
 const { sendTaskReminderEmail } = require('./emailService');
 const { sendTaskReminderNotification } = require('./pushNotificationService');
 
@@ -193,12 +193,64 @@ const sendTaskReminders = async () => {
 };
 
 /**
+ * Send calorie entry reminders to users
+ */
+const sendCalorieReminders = async () => {
+  try {
+    console.log('Starting calorie entry reminder checks...');
+
+    // Get all active users with notifications enabled
+    const users = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        profile: {
+          OR: [
+            { notifications: true },
+            { emailNotifications: true }
+          ]
+        }
+      },
+      include: {
+        profile: true
+      }
+    });
+
+    console.log(`Found ${users.length} users for calorie reminders`);
+
+    for (const user of users) {
+      try {
+        if (!user.profile) continue;
+
+        // Send email reminder if enabled
+        if (user.profile.emailNotifications && user.email) {
+          await sendCalorieReminderEmail(user);
+          console.log(`Sent calorie reminder email to ${user.email}`);
+        }
+
+        // Send push notification if enabled
+        if (user.profile.notifications && user.profile.pushToken) {
+          await sendCalorieReminderNotification(user.profile.pushToken);
+          console.log(`Sent calorie reminder push to ${user.username}`);
+        }
+      } catch (error) {
+        console.error(`Error sending calorie reminder to user ${user.id}:`, error);
+        // Continue with other users even if one fails
+      }
+    }
+
+    console.log('Calorie entry reminder checks completed');
+  } catch (error) {
+    console.error('Error in sendCalorieReminders:', error);
+  }
+};
+
+/**
  * Initialize all scheduled jobs
  */
 const initializeScheduler = () => {
   console.log('Initializing scheduler service...');
 
-  // Weekly reports - Run every Monday at 8:00 AM
+  // Weekly reports - Run every Monday at 8:00 AM PST
   cron.schedule('0 8 * * 1', () => {
     console.log('Running weekly report job...');
     sendWeeklyReports();
@@ -206,18 +258,34 @@ const initializeScheduler = () => {
     timezone: 'America/Los_Angeles'
   });
 
-  // Task reminders - Run every day at 9:00 AM
-  cron.schedule('0 9 * * *', () => {
-    console.log('Running task reminder job...');
+  // Morning task reminders - Run every day at 6:30 AM PST
+  cron.schedule('30 6 * * *', () => {
+    console.log('Running morning task reminder job...');
     sendTaskReminders();
   }, {
     timezone: 'America/Los_Angeles'
   });
 
-  // Task reminders - Run every day at 6:00 PM (evening reminder)
-  cron.schedule('0 18 * * *', () => {
+  // Evening task reminders - Run every day at 8:00 PM PST
+  cron.schedule('0 20 * * *', () => {
     console.log('Running evening task reminder job...');
     sendTaskReminders();
+  }, {
+    timezone: 'America/Los_Angeles'
+  });
+
+  // Morning calorie reminders - Run every day at 6:30 AM PST
+  cron.schedule('30 6 * * *', () => {
+    console.log('Running morning calorie reminder job...');
+    sendCalorieReminders();
+  }, {
+    timezone: 'America/Los_Angeles'
+  });
+
+  // Evening calorie reminders - Run every day at 8:00 PM PST
+  cron.schedule('0 20 * * *', () => {
+    console.log('Running evening calorie reminder job...');
+    sendCalorieReminders();
   }, {
     timezone: 'America/Los_Angeles'
   });
@@ -225,8 +293,10 @@ const initializeScheduler = () => {
   console.log('Scheduler service initialized successfully');
   console.log('Scheduled jobs:');
   console.log('- Weekly reports: Every Monday at 8:00 AM PST');
-  console.log('- Morning task reminders: Every day at 9:00 AM PST');
-  console.log('- Evening task reminders: Every day at 6:00 PM PST');
+  console.log('- Morning task reminders: Every day at 6:30 AM PST');
+  console.log('- Evening task reminders: Every day at 8:00 PM PST');
+  console.log('- Morning calorie reminders: Every day at 6:30 AM PST');
+  console.log('- Evening calorie reminders: Every day at 8:00 PM PST');
 };
 
 /**
@@ -270,6 +340,7 @@ module.exports = {
   initializeScheduler,
   sendWeeklyReports,
   sendTaskReminders,
+  sendCalorieReminders,
   calculateWeeklyReport,
   sendWeeklyReportForUser
 };

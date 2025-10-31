@@ -41,6 +41,9 @@ export default function App() {
       } else if (data.type === 'weekly_report') {
         console.log('Navigate to dashboard');
         // Navigation will be handled by the navigator
+      } else if (data.type === 'calorie_reminder') {
+        console.log('Navigate to nutrition screen');
+        // Navigation will be handled by the navigator
       }
     });
 

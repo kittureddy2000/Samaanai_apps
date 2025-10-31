@@ -192,10 +192,43 @@ const sendGoalAchievementEmail = async (user, achievement) => {
   });
 };
 
+/**
+ * Send calorie entry reminder email
+ */
+const sendCalorieReminderEmail = async (user) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #4caf50;">Don't Forget to Log Your Calories! 🍽️</h2>
+      <p>Hi ${user.firstName || user.username},</p>
+      <p>Just a friendly reminder to log your meals and calories for today.</p>
+
+      <div style="margin: 20px 0; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+        <p style="margin: 0;">Tracking your nutrition helps you:</p>
+        <ul style="margin: 10px 0;">
+          <li>Stay on top of your health goals</li>
+          <li>Make better food choices</li>
+          <li>See your weekly progress</li>
+        </ul>
+      </div>
+
+      <p>Take a moment now to update your calorie log!</p>
+      <p style="margin-top: 30px;">Best regards,<br>The Samaanai Team</p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Reminder: Log Your Calories for Today',
+    html,
+    text: `Hi ${user.firstName || user.username}, don't forget to log your meals and calories for today!`
+  });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendWeeklyReportEmail,
   sendTaskReminderEmail,
-  sendGoalAchievementEmail
+  sendGoalAchievementEmail,
+  sendCalorieReminderEmail
 };
