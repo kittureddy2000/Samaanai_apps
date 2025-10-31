@@ -4,6 +4,7 @@ import { Text, Card, Button, TextInput, ActivityIndicator, HelperText, IconButto
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../services/api';
 import { format, addDays, getDay } from 'date-fns';
 
@@ -162,9 +163,38 @@ export default function AddEditTaskScreen({ route, navigation }) {
       };
       input.click();
     } else {
-      // For mobile, use image picker since expo-document-picker has web compatibility issues
-      // Users can still attach files via image picker
-      Alert.alert('File Upload', 'Please use the image picker to attach files on mobile.');
+      // Mobile: Use expo-document-picker
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const file = result.assets[0];
+
+          // Check if the picked file is an image
+          const isImage = file.mimeType?.startsWith('image/');
+
+          if (isImage) {
+            // If it's an image, show it as image preview
+            setSelectedImage(file.uri);
+            setFormData({ ...formData, imageUrl: file.uri });
+          } else {
+            // Otherwise, show as document
+            setSelectedDocument({
+              uri: file.uri,
+              name: file.name,
+              size: file.size,
+              mimeType: file.mimeType
+            });
+            setFormData({ ...formData, imageUrl: file.uri });
+          }
+        }
+      } catch (err) {
+        console.error('Error picking document:', err);
+        Alert.alert('Error', 'Failed to pick document. Please try again.');
+      }
     }
   };
 
