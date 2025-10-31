@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, ActivityIndicator, FAB, Chip, Menu } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { api } from '../../services/api';
@@ -230,6 +230,46 @@ export default function TodoScreen({ navigation }) {
       {stats && (
         <Card style={styles.statsCard}>
           <Card.Content>
+            <View style={styles.statsHeader}>
+              <Text style={styles.statsTitle}>Tasks Overview</Text>
+              <Menu
+                visible={sortMenuVisible}
+                onDismiss={() => setSortMenuVisible(false)}
+                anchor={
+                  <TouchableOpacity
+                    onPress={() => setSortMenuVisible(true)}
+                    style={styles.sortIconButton}
+                  >
+                    <MaterialCommunityIcons name="sort" size={20} color="#666" />
+                  </TouchableOpacity>
+                }
+              >
+                <Menu.Item
+                  onPress={() => {
+                    setSortBy('dueDate');
+                    setSortMenuVisible(false);
+                  }}
+                  title="Sort by Due Date"
+                  leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+                />
+                <Menu.Item
+                  onPress={() => {
+                    setSortBy('name');
+                    setSortMenuVisible(false);
+                  }}
+                  title="Sort by Name"
+                  leadingIcon={sortBy === 'name' ? 'check' : undefined}
+                />
+                <Menu.Item
+                  onPress={() => {
+                    setSortBy('createdAt');
+                    setSortMenuVisible(false);
+                  }}
+                  title="Sort by Created Date"
+                  leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
+                />
+              </Menu>
+            </View>
             <View style={styles.statsRow}>
               <TouchableOpacity
                 style={styles.statItem}
@@ -263,76 +303,6 @@ export default function TodoScreen({ navigation }) {
           </Card.Content>
         </Card>
       )}
-
-      {/* Filter and Sort Row */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterChipsRow}>
-          <Chip
-            mode={filter === 'all' ? 'flat' : 'outlined'}
-            selected={filter === 'all'}
-            onPress={() => setFilter('all')}
-            style={styles.filterChip}
-          >
-            All
-          </Chip>
-          <Chip
-            mode={filter === 'pending' ? 'flat' : 'outlined'}
-            selected={filter === 'pending'}
-            onPress={() => setFilter('pending')}
-            style={styles.filterChip}
-          >
-            Pending
-          </Chip>
-          <Chip
-            mode={filter === 'completed' ? 'flat' : 'outlined'}
-            selected={filter === 'completed'}
-            onPress={() => setFilter('completed')}
-            style={styles.filterChip}
-          >
-            Completed
-          </Chip>
-        </View>
-        <Menu
-          visible={sortMenuVisible}
-          onDismiss={() => setSortMenuVisible(false)}
-          anchor={
-            <Button
-              mode="outlined"
-              onPress={() => setSortMenuVisible(true)}
-              icon="sort"
-              compact
-              style={styles.sortButton}
-            >
-              Sort
-            </Button>
-          }
-        >
-          <Menu.Item
-            onPress={() => {
-              setSortBy('dueDate');
-              setSortMenuVisible(false);
-            }}
-            title="Due Date"
-            leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
-          />
-          <Menu.Item
-            onPress={() => {
-              setSortBy('name');
-              setSortMenuVisible(false);
-            }}
-            title="Name"
-            leadingIcon={sortBy === 'name' ? 'check' : undefined}
-          />
-          <Menu.Item
-            onPress={() => {
-              setSortBy('createdAt');
-              setSortMenuVisible(false);
-            }}
-            title="Created Date"
-            leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
-          />
-        </Menu>
-      </View>
 
       {/* Tasks List */}
       <ScrollView
@@ -390,6 +360,22 @@ const styles = StyleSheet.create({
     margin: 12,
     marginBottom: 6
   },
+  statsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333'
+  },
+  sortIconButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5'
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around'
@@ -416,27 +402,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#666',
     marginTop: 2
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingBottom: 6,
-    gap: 8
-  },
-  filterChipsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flex: 1
-  },
-  filterChip: {
-    marginHorizontal: 2,
-    height: 32
-  },
-  sortButton: {
-    marginLeft: 8,
-    height: 32
   },
   tasksList: {
     flex: 1
