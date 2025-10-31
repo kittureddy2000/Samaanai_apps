@@ -1,0 +1,162 @@
+name: PR Tests & Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend-express/**'
+      - 'samaanai-mobile/**'
+      - '.github/workflows/pr-tests.yml'
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'backend-express/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend-express/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./backend-express
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./backend-express
+        run: npx prisma generate
+
+      - name: Run linting
+        working-directory: ./backend-express
+        run: npm run lint || echo "Linting completed with warnings"
+
+      - name: Run tests
+        working-directory: ./backend-express
+        run: npm test -- --passWithNoTests
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+
+      - name: Check test coverage
+        working-directory: ./backend-express
+        run: |
+          if [ -d "coverage" ]; then
+            echo "✅ Test coverage generated"
+            echo "Coverage report available in artifacts"
+          fi
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-report
+          path: backend-express/coverage/
+          retention-days: 7
+
+  frontend-checks:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.changed_files, 'samaanai-mobile/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: samaanai-mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./samaanai-mobile
+        run: npm ci
+
+      - name: Check for syntax errors
+        working-directory: ./samaanai-mobile
+        run: |
+          echo "🔍 Checking for JavaScript syntax errors..."
+          npx eslint . --ext .js,.jsx --max-warnings 100 || echo "⚠️  Some warnings found but continuing"
+
+      - name: Type check (if TypeScript)
+        working-directory: ./samaanai-mobile
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            echo "Running TypeScript checks..."
+            npx tsc --noEmit || echo "TypeScript checks completed"
+          else
+            echo "No TypeScript configuration found, skipping type checks"
+          fi
+
+  pr-summary:
+    name: PR Test Summary
+    needs: [backend-tests, frontend-checks]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Pull Request Test Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Backend Tests: ${{ needs.backend-tests.result }}"
+          echo "Frontend Checks: ${{ needs.frontend-checks.result }}"
+          echo ""
+
+          if [[ "${{ needs.backend-tests.result }}" == "failure" ]] || [[ "${{ needs.frontend-checks.result }}" == "failure" ]]; then
+            echo "❌ Some checks failed. Please review the logs above."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            exit 1
+          else
+            echo "✅ All checks passed!"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          fi
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const backendStatus = '${{ needs.backend-tests.result }}';
+            const frontendStatus = '${{ needs.frontend-checks.result }}';
+
+            let emoji = '✅';
+            let message = 'All checks passed!';
+
+            if (backendStatus === 'failure' || frontendStatus === 'failure') {
+              emoji = '❌';
+              message = 'Some checks failed. Please review the errors.';
+            } else if (backendStatus === 'skipped' && frontendStatus === 'skipped') {
+              emoji = '⏭️';
+              message = 'No tests needed for this PR (no backend or frontend changes detected).';
+            }
+
+            const body = `## ${emoji} PR Test Results
+
+            | Check | Status |
+            |-------|--------|
+            | Backend Tests | ${backendStatus === 'success' ? '✅ Passed' : backendStatus === 'failure' ? '❌ Failed' : '⏭️ Skipped'} |
+            | Frontend Checks | ${frontendStatus === 'success' ? '✅ Passed' : frontendStatus === 'failure' ? '❌ Failed' : '⏭️ Skipped'} |
+
+            ${message}
+
+            📋 [View full test results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

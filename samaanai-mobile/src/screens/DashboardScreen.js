@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { Card, Title, Text, ActivityIndicator, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import api from '../services/api';
-import { format, subDays, getDay } from 'date-fns';
+import { format, subDays, addDays, getDay } from 'date-fns';
 
-const getStartOfCurrentWeek = (startOfWeek = 2) => {
-  const today = new Date();
-  const jsDayOfWeek = getDay(today);
+const getStartOfWeek = (date, startOfWeek = 2) => {
+  const jsDayOfWeek = getDay(date);
   const pythonWeekday = jsDayOfWeek === 0 ? 6 : jsDayOfWeek - 1;
   const daysToSubtract = (pythonWeekday - startOfWeek + 7) % 7;
-  return subDays(today, daysToSubtract);
+  return subDays(date, daysToSubtract);
+};
+
+const getStartOfCurrentWeek = (startOfWeek = 2) => {
+  return getStartOfWeek(new Date(), startOfWeek);
 };
 
 const parseLocalDate = (dateString) => {
@@ -34,10 +37,11 @@ export default function DashboardScreen({ navigation }) {
   const [nutritionData, setNutritionData] = useState(null);
   const [weeklyData, setWeeklyData] = useState(null);
   const [todoData, setTodoData] = useState(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(getStartOfCurrentWeek());
 
   const fetchDashboardData = async () => {
     try {
-      const startOfWeek = getStartOfCurrentWeek();
+      const startOfWeek = selectedWeekStart;
       const endDate = new Date(startOfWeek);
       endDate.setDate(endDate.getDate() + 6);
 
@@ -65,11 +69,24 @@ export default function DashboardScreen({ navigation }) {
     if (isFocused) {
       fetchDashboardData();
     }
-  }, [isFocused]);
+  }, [isFocused, selectedWeekStart]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
+  };
+
+  const handlePreviousWeek = () => {
+    setSelectedWeekStart(prevWeek => subDays(prevWeek, 7));
+  };
+
+  const handleNextWeek = () => {
+    setSelectedWeekStart(prevWeek => addDays(prevWeek, 7));
+  };
+
+  const isCurrentWeek = () => {
+    const currentWeekStart = getStartOfCurrentWeek();
+    return format(selectedWeekStart, 'yyyy-MM-dd') === format(currentWeekStart, 'yyyy-MM-dd');
   };
 
   const prepareChartData = () => {
@@ -224,7 +241,28 @@ export default function DashboardScreen({ navigation }) {
               {/* Weekly Bar Chart */}
               {chartData && (
                 <View style={styles.weeklyChartSection}>
-                  <Text style={styles.weeklyChartTitle}>Weekly Overview</Text>
+                  <View style={styles.weekNavigationHeader}>
+                    <TouchableOpacity onPress={handlePreviousWeek} style={styles.weekNavButton}>
+                      <MaterialCommunityIcons name="chevron-left" size={24} color="#666" />
+                    </TouchableOpacity>
+                    <View style={styles.weekTitleContainer}>
+                      <Text style={styles.weeklyChartTitle}>Weekly Overview</Text>
+                      <Text style={styles.weekDateRange}>
+                        {format(selectedWeekStart, 'MMM d')} - {format(addDays(selectedWeekStart, 6), 'MMM d, yyyy')}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleNextWeek}
+                      style={styles.weekNavButton}
+                      disabled={isCurrentWeek()}
+                    >
+                      <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={24}
+                        color={isCurrentWeek() ? '#ccc' : '#666'}
+                      />
+                    </TouchableOpacity>
+                  </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.groupedBarChart}>
                       <View style={styles.chartContainer}>
@@ -483,11 +521,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0'
   },
+  weekNavigationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12
+  },
+  weekNavButton: {
+    padding: 4,
+    borderRadius: 4
+  },
+  weekTitleContainer: {
+    flex: 1,
+    alignItems: 'center'
+  },
   weeklyChartTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 12
+    color: '#666'
+  },
+  weekDateRange: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2
   },
   groupedBarChart: {
     paddingVertical: 8,
