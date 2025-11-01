@@ -186,14 +186,14 @@ const checkPushReceipts = async (tickets) => {
  * Send calorie entry reminder notification
  */
 const sendCalorieReminderNotification = async (pushToken) => {
-  return sendPushNotification(pushToken, {
+  return sendPushNotification({
+    pushToken,
     title: 'Log Your Calories 🍽️',
     body: 'Don\'t forget to track your meals for today!',
     data: {
       type: 'calorie_reminder',
       screen: 'Nutrition'
-    },
-    sound: 'default'
+    }
   });
 };
 

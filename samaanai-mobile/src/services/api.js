@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { secureStorage, appStorage } from './secureStorage';
 
 // Robust API URL detection with multiple fallbacks
 const getApiBaseUrl = () => {
@@ -40,7 +41,7 @@ const apiClient = axios.create({
 // Request interceptor - attach JWT token
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('accessToken');
+    const token = await secureStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -60,18 +61,24 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken');
+        const refreshToken = await secureStorage.getItem('refreshToken');
         const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
           refreshToken
         });
 
-        await AsyncStorage.setItem('accessToken', data.accessToken);
+        // Save both tokens securely (backend may rotate refresh token for security)
+        await secureStorage.setItem('accessToken', data.accessToken);
+        if (data.refreshToken) {
+          await secureStorage.setItem('refreshToken', data.refreshToken);
+        }
+
         originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - logout user
-        await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
+        // Refresh failed - clear all auth data and logout user
+        await secureStorage.multiRemove(['accessToken', 'refreshToken']);
+        await appStorage.removeItem('user'); // User data is non-sensitive, stored in appStorage
         // Navigate to login (use navigation ref)
         return Promise.reject(refreshError);
       }

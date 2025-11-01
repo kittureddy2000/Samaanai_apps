@@ -4,6 +4,7 @@ const { body } = require('express-validator');
 const authController = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const passport = require('../config/passport');
+const { authLimiter } = require('../middleware/rateLimiter');
 
 // Validation middleware
 const registerValidation = [
@@ -32,9 +33,9 @@ const loginValidation = [
     .withMessage('Password is required')
 ];
 
-// Routes
-router.post('/register', registerValidation, authController.register);
-router.post('/login', loginValidation, authController.login);
+// Routes - apply strict rate limiting to sensitive auth endpoints
+router.post('/register', authLimiter, registerValidation, authController.register);
+router.post('/login', authLimiter, loginValidation, authController.login);
 router.post('/refresh', authController.refreshToken);
 router.post('/logout', authenticate, authController.logout);
 

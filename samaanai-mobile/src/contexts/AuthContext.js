@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { registerForPushNotificationsAsync } from '../services/notificationService';
+import { secureStorage, appStorage } from '../services/secureStorage';
 
 const AuthContext = createContext();
 
@@ -16,8 +16,8 @@ export const AuthProvider = ({ children }) => {
 
   const loadStoredUser = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const token = await AsyncStorage.getItem('accessToken');
+      const storedUser = await appStorage.getItem('user');
+      const token = await secureStorage.getItem('accessToken');
 
       if (storedUser && token) {
         setUser(JSON.parse(storedUser));
@@ -52,10 +52,11 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.login(email, password);
       console.log('Login response:', data);
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(data.user)],
-        ['accessToken', data.accessToken],
-        ['refreshToken', data.refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(data.user)),
+        secureStorage.setItem('accessToken', data.accessToken),
+        secureStorage.setItem('refreshToken', data.refreshToken)
       ]);
 
       setUser(data.user);
@@ -92,10 +93,11 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.register(username, email, password);
       console.log('Registration response:', data);
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(data.user)],
-        ['accessToken', data.accessToken],
-        ['refreshToken', data.refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(data.user)),
+        secureStorage.setItem('accessToken', data.accessToken),
+        secureStorage.setItem('refreshToken', data.refreshToken)
       ]);
 
       setUser(data.user);
@@ -152,7 +154,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
+      // Clear tokens from secure storage and user from app storage
+      await Promise.all([
+        appStorage.removeItem('user'),
+        secureStorage.multiRemove(['accessToken', 'refreshToken'])
+      ]);
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
