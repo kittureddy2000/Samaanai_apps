@@ -79,6 +79,23 @@ app.use(passport.initialize());
 // Rate limiting (apply to all routes)
 app.use(rateLimiter);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Samaanai API',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV,
+    endpoints: {
+      health: '/health',
+      auth: '/api/v1/auth',
+      todo: '/api/v1/todo',
+      nutrition: '/api/v1/nutrition',
+      user: '/api/v1/user'
+    },
+    documentation: 'https://github.com/kittureddy2000/Samaanai_apps'
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
