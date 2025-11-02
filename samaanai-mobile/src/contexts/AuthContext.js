@@ -130,10 +130,11 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async (accessToken, refreshToken, user) => {
     try {
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(user)],
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(user)),
+        secureStorage.setItem('accessToken', accessToken),
+        secureStorage.setItem('refreshToken', refreshToken)
       ]);
 
       setUser(user);
