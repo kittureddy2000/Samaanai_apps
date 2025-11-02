@@ -1,30 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, Image, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, TextInput, ActivityIndicator, HelperText, IconButton, Menu } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../services/api';
-import { format } from 'date-fns';
+import { format, addDays, getDay } from 'date-fns';
+
+// Helper function to get end of current week (Sunday)
+const getEndOfWeek = () => {
+  const today = new Date();
+  const jsDayOfWeek = getDay(today); // 0 = Sunday, 6 = Saturday
+  const daysUntilSunday = jsDayOfWeek === 0 ? 0 : 7 - jsDayOfWeek;
+  return addDays(today, daysUntilSunday);
+};
 
 export default function AddEditTaskScreen({ route, navigation }) {
   const { task } = route.params || {};
   const isEdit = !!task;
 
+  // Calculate default due date (end of week) for new tasks
+  const defaultDueDate = isEdit ? (task.dueDate || '') : format(getEndOfWeek(), 'yyyy-MM-dd');
+  const defaultSelectedDate = isEdit
+    ? (task?.dueDate ? new Date(task.dueDate) : new Date())
+    : getEndOfWeek();
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: task?.name || '',
     description: task?.description || '',
-    dueDate: task?.dueDate || '',
+    dueDate: defaultDueDate,
     reminderType: task?.reminderType || '',
     imageUrl: task?.imageUrl || ''
   });
   const [errors, setErrors] = useState({});
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(
-    task?.dueDate ? new Date(task.dueDate) : new Date()
-  );
+  const [selectedDate, setSelectedDate] = useState(defaultSelectedDate);
   const [selectedImage, setSelectedImage] = useState(task?.imageUrl || null);
+  const [selectedDocument, setSelectedDocument] = useState(null);
 
   const reminderTypes = [
     { label: 'None', value: '' },
@@ -46,43 +61,169 @@ export default function AddEditTaskScreen({ route, navigation }) {
   };
 
   const pickImageFromGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    if (Platform.OS === 'web') {
+      // Web-specific image picker
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setSelectedImage(event.target.result);
+            setFormData({ ...formData, imageUrl: event.target.result });
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      const imageUri = result.assets[0].uri;
-      setSelectedImage(imageUri);
-      setFormData({ ...formData, imageUrl: imageUri });
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImage(imageUri);
+        setFormData({ ...formData, imageUrl: imageUri });
+      }
     }
   };
 
   const takePhoto = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
+    if (Platform.OS === 'web') {
+      // Web doesn't support camera directly, use file input with capture
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setSelectedImage(event.target.result);
+            setFormData({ ...formData, imageUrl: event.target.result });
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) return;
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      const imageUri = result.assets[0].uri;
-      setSelectedImage(imageUri);
-      setFormData({ ...formData, imageUrl: imageUri });
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setSelectedImage(imageUri);
+        setFormData({ ...formData, imageUrl: imageUri });
+      }
     }
   };
 
   const removeImage = () => {
     setSelectedImage(null);
     setFormData({ ...formData, imageUrl: '' });
+  };
+
+  const pickDocument = async () => {
+    if (Platform.OS === 'web') {
+      // Web-specific file picker using HTML input
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '*/*';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            setSelectedDocument({
+              uri: event.target.result,
+              name: file.name,
+              size: file.size,
+              mimeType: file.type
+            });
+            setFormData({ ...formData, imageUrl: event.target.result });
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+      input.click();
+    } else {
+      // Mobile: Use expo-document-picker
+      try {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true
+        });
+
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const file = result.assets[0];
+
+          // Check if the picked file is an image
+          const isImage = file.mimeType?.startsWith('image/');
+
+          if (isImage) {
+            // If it's an image, show it as image preview
+            setSelectedImage(file.uri);
+            setFormData({ ...formData, imageUrl: file.uri });
+          } else {
+            // Otherwise, show as document
+            setSelectedDocument({
+              uri: file.uri,
+              name: file.name,
+              size: file.size,
+              mimeType: file.mimeType
+            });
+            setFormData({ ...formData, imageUrl: file.uri });
+          }
+        }
+      } catch (err) {
+        console.error('Error picking document:', err);
+        Alert.alert('Error', 'Failed to pick document. Please try again.');
+      }
+    }
+  };
+
+  const removeDocument = () => {
+    setSelectedDocument(null);
+    if (!selectedImage) {
+      setFormData({ ...formData, imageUrl: '' });
+    }
+  };
+
+  const getFileIcon = (mimeType) => {
+    if (!mimeType) return 'file-document';
+
+    if (mimeType.includes('pdf')) return 'file-pdf-box';
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'file-word-box';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'file-excel-box';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'file-powerpoint-box';
+    if (mimeType.includes('text')) return 'file-document-outline';
+    if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'zip-box';
+
+    return 'file-document';
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const handleDateChange = (event, date) => {
@@ -264,23 +405,31 @@ export default function AddEditTaskScreen({ route, navigation }) {
               ))}
             </Menu>
 
-            <Text style={styles.label}>Image</Text>
-            <View style={styles.imageButtonsContainer}>
+            <Text style={styles.label}>Attachments</Text>
+            <View style={styles.attachmentButtonsContainer}>
               <Button
                 mode="outlined"
                 onPress={takePhoto}
-                style={styles.imageButton}
+                style={styles.attachmentButton}
                 icon="camera"
               >
-                Take Photo
+                Camera
               </Button>
               <Button
                 mode="outlined"
                 onPress={pickImageFromGallery}
-                style={styles.imageButton}
+                style={styles.attachmentButton}
                 icon="image"
               >
-                Choose from Gallery
+                Photo
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={pickDocument}
+                style={styles.attachmentButton}
+                icon="file-document"
+              >
+                File
               </Button>
             </View>
 
@@ -293,6 +442,31 @@ export default function AddEditTaskScreen({ route, navigation }) {
                   style={styles.removeImageButton}
                   onPress={removeImage}
                 />
+              </View>
+            )}
+
+            {selectedDocument && (
+              <View style={styles.documentPreviewContainer}>
+                <View style={styles.documentInfo}>
+                  <MaterialCommunityIcons
+                    name={getFileIcon(selectedDocument.mimeType)}
+                    size={40}
+                    color="#1976d2"
+                  />
+                  <View style={styles.documentDetails}>
+                    <Text style={styles.documentName} numberOfLines={1}>
+                      {selectedDocument.name}
+                    </Text>
+                    <Text style={styles.documentSize}>
+                      {formatFileSize(selectedDocument.size)}
+                    </Text>
+                  </View>
+                  <IconButton
+                    icon="close-circle"
+                    size={24}
+                    onPress={removeDocument}
+                  />
+                </View>
               </View>
             )}
 
@@ -376,12 +550,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 16
   },
-  imageButtonsContainer: {
+  attachmentButtonsContainer: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16
   },
-  imageButton: {
+  attachmentButton: {
     flex: 1
   },
   imagePreviewContainer: {
@@ -400,6 +574,32 @@ const styles = StyleSheet.create({
     right: -10,
     backgroundColor: 'white',
     borderRadius: 15
+  },
+  documentPreviewContainer: {
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#f9f9f9'
+  },
+  documentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  documentDetails: {
+    flex: 1
+  },
+  documentName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4
+  },
+  documentSize: {
+    fontSize: 12,
+    color: '#666'
   },
   submitButton: {
     marginTop: 24

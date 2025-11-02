@@ -1,17 +1,19 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { PrismaClient } = require('@prisma/client');
+const { prisma } = require('./database');
+const { sendWelcomeEmail } = require('../services/emailService');
 
-const prisma = new PrismaClient();
-
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:8080/api/v1/auth/google/callback',
-      passReqToCallback: true
-    },
+// Only configure Google OAuth if credentials are available
+// This allows tests to run without Google OAuth setup
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:8080/api/v1/auth/google/callback',
+        passReqToCallback: true
+      },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
@@ -48,13 +50,22 @@ passport.use(
           }
         });
 
+        // Send welcome email (async, don't wait for it)
+        sendWelcomeEmail(user).catch(error => {
+          console.error('Failed to send welcome email:', error);
+          // Don't fail OAuth if email fails
+        });
+
         return done(null, user);
       } catch (error) {
         console.error('Google OAuth error:', error);
         return done(error, null);
       }
     }
-  )
-);
+    )
+  );
+} else {
+  console.warn('⚠️  Google OAuth not configured (GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET missing)');
+}
 
 module.exports = passport;

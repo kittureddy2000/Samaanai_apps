@@ -17,6 +17,13 @@ const parseLocalDate = (dateString) => {
   return new Date(year, month - 1, day);
 };
 
+const formatCalories = (value) => {
+  if (value >= 1000) {
+    return (value / 1000).toFixed(1) + 'k';
+  }
+  return value.toString();
+};
+
 export default function NutritionScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,10 +123,10 @@ export default function NutritionScreen({ navigation }) {
       return Math.max(0, food - exercise);
     });
 
-    // Net calories (what's left after accounting for BMR goal)
+    // Net calories (preserve sign for color coding)
     const netData = sortedEntries.map(entry => {
       const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      return hasData ? Math.abs(entry.net_calories || 0) : 0;
+      return hasData ? (entry.net_calories || 0) : 0;
     });
 
     return { labels, consumedData, netData };
@@ -222,20 +229,27 @@ export default function NutritionScreen({ navigation }) {
                     {chartData.labels.map((label, index) => {
                       const consumed = chartData.consumedData[index];
                       const net = chartData.netData[index];
-                      const maxValue = Math.max(...chartData.consumedData, ...chartData.netData);
+                      const absNet = Math.abs(net);
+
+                      // Calculate max value using absolute values for proper scaling
+                      const allAbsValues = chartData.netData.map(n => Math.abs(n));
+                      const maxValue = Math.max(...chartData.consumedData, ...allAbsValues, 1);
                       const consumedHeight = (consumed / maxValue) * 120;
-                      const netHeight = (net / maxValue) * 120;
+                      const netHeight = (absNet / maxValue) * 120;
+
+                      // Determine net bar color: red if negative (over goal/surplus), green if positive (under goal/deficit)
+                      const netBarColor = net < 0 ? '#f44336' : net > 0 ? '#4caf50' : '#999';
 
                       return (
                         <View key={index} style={styles.barGroup}>
                           <View style={styles.barPair}>
                             <View style={styles.barWrapper}>
                               <View style={[styles.bar, styles.consumedBar, { height: consumedHeight }]} />
-                              <Text style={styles.barValue}>{consumed}</Text>
+                              <Text style={styles.barValue}>{formatCalories(consumed)}</Text>
                             </View>
                             <View style={styles.barWrapper}>
-                              <View style={[styles.bar, styles.netBar, { height: netHeight }]} />
-                              <Text style={styles.barValue}>{net}</Text>
+                              <View style={[styles.bar, { backgroundColor: netBarColor, height: netHeight }]} />
+                              <Text style={styles.barValue}>{formatCalories(absNet)}</Text>
                             </View>
                           </View>
                           <Text style={styles.barLabel}>{label}</Text>
@@ -249,15 +263,19 @@ export default function NutritionScreen({ navigation }) {
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendColor, { backgroundColor: '#2196F3' }]} />
-                <Text style={styles.legendText}>Consumed (Food-Exercise)</Text>
+                <Text style={styles.legendText}>Consumed</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FF9800' }]} />
-                <Text style={styles.legendText}>Net Calories</Text>
+                <View style={[styles.legendColor, { backgroundColor: '#f44336' }]} />
+                <Text style={styles.legendText}>Over Goal</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: '#4caf50' }]} />
+                <Text style={styles.legendText}>Under Goal</Text>
               </View>
             </View>
             <Text style={styles.chartHelpText}>
-              Net calories show how much over (higher bar) or under (lower bar) your daily goal you are
+              Red bars show you're over your daily goal (surplus), green bars show you're under (deficit)
             </Text>
           </Card.Content>
         </Card>
@@ -338,19 +356,19 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   card: {
-    margin: 16,
-    marginBottom: 8
+    margin: 12,
+    marginBottom: 6
   },
   calorieOverview: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 16
+    marginVertical: 12
   },
   calorieItem: {
     alignItems: 'center'
   },
   calorieValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1976d2'
   },
@@ -366,12 +384,12 @@ const styles = StyleSheet.create({
     marginTop: 4
   },
   progressContainer: {
-    marginTop: 16
+    marginTop: 12
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8
+    marginBottom: 6
   },
   progressLabel: {
     fontSize: 14,
@@ -392,17 +410,17 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   quickActions: {
-    marginTop: 12,
-    gap: 8
+    marginTop: 8,
+    gap: 6
   },
   actionButton: {
-    marginVertical: 4
+    marginVertical: 2
   },
   logButton: {
-    paddingVertical: 8
+    paddingVertical: 4
   },
   logButtonContent: {
-    paddingVertical: 8
+    paddingVertical: 4
   },
   cardHeader: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { registerForPushNotificationsAsync } from '../services/notificationService';
+import { secureStorage, appStorage } from '../services/secureStorage';
 
 const AuthContext = createContext();
 
@@ -15,17 +16,33 @@ export const AuthProvider = ({ children }) => {
 
   const loadStoredUser = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const token = await AsyncStorage.getItem('accessToken');
+      const storedUser = await appStorage.getItem('user');
+      const token = await secureStorage.getItem('accessToken');
 
       if (storedUser && token) {
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
+        // Register push token for existing session
+        await registerPushToken();
       }
     } catch (error) {
       console.error('Error loading user:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const registerPushToken = async () => {
+    try {
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        console.log('Registering push token with backend:', pushToken);
+        await api.registerPushToken(pushToken);
+        console.log('Push token registered successfully');
+      }
+    } catch (error) {
+      // Don't fail authentication if push token registration fails
+      console.error('Error registering push token:', error);
     }
   };
 
@@ -35,14 +52,18 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.login(email, password);
       console.log('Login response:', data);
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(data.user)],
-        ['accessToken', data.accessToken],
-        ['refreshToken', data.refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(data.user)),
+        secureStorage.setItem('accessToken', data.accessToken),
+        secureStorage.setItem('refreshToken', data.refreshToken)
       ]);
 
       setUser(data.user);
       setIsAuthenticated(true);
+
+      // Register push token after successful login
+      await registerPushToken();
 
       return { success: true };
     } catch (error) {
@@ -72,14 +93,18 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.register(username, email, password);
       console.log('Registration response:', data);
 
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(data.user)],
-        ['accessToken', data.accessToken],
-        ['refreshToken', data.refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(data.user)),
+        secureStorage.setItem('accessToken', data.accessToken),
+        secureStorage.setItem('refreshToken', data.refreshToken)
       ]);
 
       setUser(data.user);
       setIsAuthenticated(true);
+
+      // Register push token after successful registration
+      await registerPushToken();
 
       return { success: true };
     } catch (error) {
@@ -105,14 +130,18 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = async (accessToken, refreshToken, user) => {
     try {
-      await AsyncStorage.multiSet([
-        ['user', JSON.stringify(user)],
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken]
+      // Store tokens securely, user data in app storage
+      await Promise.all([
+        appStorage.setItem('user', JSON.stringify(user)),
+        secureStorage.setItem('accessToken', accessToken),
+        secureStorage.setItem('refreshToken', refreshToken)
       ]);
 
       setUser(user);
       setIsAuthenticated(true);
+
+      // Register push token after successful Google login
+      await registerPushToken();
 
       return { success: true };
     } catch (error) {
@@ -126,7 +155,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove(['user', 'accessToken', 'refreshToken']);
+      // Clear tokens from secure storage and user from app storage
+      await Promise.all([
+        appStorage.removeItem('user'),
+        secureStorage.multiRemove(['accessToken', 'refreshToken'])
+      ]);
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {

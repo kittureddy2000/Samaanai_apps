@@ -11,6 +11,7 @@ yarn-error.log*
 .env*.local
 .env.production
 .env.staging
+.env.development
 backend-express/.env
 samaanai-mobile/.env
 

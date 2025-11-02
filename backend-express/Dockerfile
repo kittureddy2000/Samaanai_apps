@@ -6,12 +6,17 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install ALL dependencies (including dev) for build stage
+# This ensures Prisma CLI is available for code generation
+RUN npm ci && \
     npm cache clean --force
 
-# Generate Prisma Client
+# Generate Prisma Client (requires Prisma CLI from devDependencies)
 RUN npx prisma generate
+
+# Now install only production dependencies for the final image
+RUN npm ci --only=production && \
+    npm cache clean --force
 
 # Copy application code
 COPY src ./src

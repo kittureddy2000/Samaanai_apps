@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// Validate environment variables before proceeding
+const { validateEnv } = require('./config/env');
+validateEnv();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const nutritionRoutes = require('./routes/nutrition');
 const todoRoutes = require('./routes/todo');
 const userRoutes = require('./routes/user');
+const emailTestRoutes = require('./routes/emailTest');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -25,11 +31,35 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
+// CORS configuration with dynamic origin validation
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || [];
+
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowlist
+    if (allowedOrigins.length === 0) {
+      // Development fallback: allow all origins but warn
+      console.warn('⚠️  ALLOWED_ORIGINS not set - allowing all origins in development mode');
+      return callback(null, origin);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, origin);
+    }
+
+    // Reject unauthorized origins
+    return callback(new Error(`Origin ${origin} not allowed by CORS policy`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  maxAge: 86400 // Cache preflight for 24 hours
 }));
 
 app.use(compression());
@@ -49,6 +79,23 @@ app.use(passport.initialize());
 // Rate limiting (apply to all routes)
 app.use(rateLimiter);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Samaanai API',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV,
+    endpoints: {
+      health: '/health',
+      auth: '/api/v1/auth',
+      todo: '/api/v1/todo',
+      nutrition: '/api/v1/nutrition',
+      user: '/api/v1/user'
+    },
+    documentation: 'https://github.com/kittureddy2000/Samaanai_apps'
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
@@ -64,6 +111,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/nutrition', nutritionRoutes);
 app.use('/api/v1/todo', todoRoutes);
 app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/test', emailTestRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -93,6 +141,10 @@ if (require.main === module) {
     console.log(`🚀 Samaanai API running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+
+    // Initialize scheduled jobs
+    const { initializeScheduler } = require('./services/schedulerService');
+    initializeScheduler();
   });
 }
 

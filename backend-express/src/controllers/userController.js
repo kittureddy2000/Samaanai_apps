@@ -66,7 +66,11 @@ exports.getPreferences = async (req, res, next) => {
       where: { userId: req.user.id },
       select: {
         timezone: true,
-        startOfWeek: true
+        startOfWeek: true,
+        notifications: true,
+        emailNotifications: true,
+        weeklyReports: true,
+        darkMode: true
       }
     });
 
@@ -78,17 +82,54 @@ exports.getPreferences = async (req, res, next) => {
 
 exports.updatePreferences = async (req, res, next) => {
   try {
-    const { timezone, startOfWeek } = req.body;
+    const {
+      timezone,
+      startOfWeek,
+      notifications,
+      emailNotifications,
+      weeklyReports,
+      darkMode,
+      pushToken
+    } = req.body;
 
     const profile = await prisma.userProfile.update({
       where: { userId: req.user.id },
       data: {
         ...(timezone && { timezone }),
-        ...(startOfWeek !== undefined && { startOfWeek })
+        ...(startOfWeek !== undefined && { startOfWeek }),
+        ...(notifications !== undefined && { notifications }),
+        ...(emailNotifications !== undefined && { emailNotifications }),
+        ...(weeklyReports !== undefined && { weeklyReports }),
+        ...(darkMode !== undefined && { darkMode }),
+        ...(pushToken !== undefined && { pushToken })
       }
     });
 
     res.json({ preferences: profile });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.registerPushToken = async (req, res, next) => {
+  try {
+    const { pushToken } = req.body;
+
+    if (!pushToken) {
+      return res.status(400).json({ error: 'Push token is required' });
+    }
+
+    // Update or create profile with push token
+    const profile = await prisma.userProfile.upsert({
+      where: { userId: req.user.id },
+      update: { pushToken },
+      create: {
+        userId: req.user.id,
+        pushToken
+      }
+    });
+
+    res.json({ success: true, message: 'Push token registered successfully' });
   } catch (error) {
     next(error);
   }
