@@ -9,6 +9,11 @@ on:
       - 'samaanai-mobile/**'
       - '.github/workflows/pr-tests.yml'
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   backend-tests:
     name: Backend Tests
