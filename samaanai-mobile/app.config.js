@@ -64,7 +64,8 @@ module.exports = {
           photosPermission: "The app needs access to your photos to attach images to tasks.",
           cameraPermission: "The app needs access to your camera to take photos for tasks."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 };
