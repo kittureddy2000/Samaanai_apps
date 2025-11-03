@@ -52,7 +52,7 @@ module.exports = {
       backgroundColor: "#ffffff"
     },
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.samaanai.com",
+      API_BASE_URL: process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || "https://samaanai-backend-172298808029.us-central1.run.app",
       eas: {
         projectId: "7b2ffe0d-3be0-459b-aec7-39e44d455cbd"
       }
@@ -64,7 +64,8 @@ module.exports = {
           photosPermission: "The app needs access to your photos to attach images to tasks.",
           cameraPermission: "The app needs access to your camera to take photos for tasks."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 };

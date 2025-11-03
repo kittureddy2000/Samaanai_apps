@@ -35,7 +35,7 @@
     "production": {
       "distribution": "internal",
       "env": {
-        "API_BASE_URL": "https://api.samaanai.com"
+        "API_BASE_URL": "https://samaanai-backend-172298808029.us-central1.run.app"
       },
       "android": {
         "buildType": "apk"
