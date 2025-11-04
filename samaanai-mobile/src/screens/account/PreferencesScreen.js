@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, ActivityIndicator, List, Switch, Divider } from 'react-native-paper';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
 import { api } from '../../services/api';
 
 export default function PreferencesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testingNotification, setTestingNotification] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [preferences, setPreferences] = useState({
     notifications: true,
     darkMode: false,
     emailNotifications: true,
-    weeklyReports: true
+    weeklyReports: true,
+    notificationTime: '14:30' // Default to 2:30 PM UTC
   });
 
   useEffect(() => {
@@ -47,6 +52,90 @@ export default function PreferencesScreen({ navigation }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      setTestingNotification(true);
+
+      // Test push notification
+      const { status } = await Notifications.getPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please enable notifications in your device settings to test push notifications.'
+        );
+        setTestingNotification(false);
+        return;
+      }
+
+      // Schedule a test notification
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Test Notification 📬',
+          body: 'This is a test notification from Samaanai. Your notifications are working!',
+          data: { test: true },
+        },
+        trigger: { seconds: 2 },
+      });
+
+      // Test email notification via backend
+      try {
+        await api.updatePreferences({ ...preferences, testEmail: true });
+        Alert.alert(
+          'Test Notification Sent',
+          'Push notification will appear in 2 seconds.\n\nAn email has also been sent to your registered email address.',
+          [{ text: 'OK' }]
+        );
+      } catch (emailErr) {
+        console.error('Email test error:', emailErr);
+        Alert.alert(
+          'Push Notification Scheduled',
+          'Push notification will appear in 2 seconds.\n\nNote: Email test failed. Please check your email settings.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (err) {
+      console.error('Test notification error:', err);
+      Alert.alert('Error', 'Failed to send test notification. Please try again.');
+    } finally {
+      setTestingNotification(false);
+    }
+  };
+
+  const handleTimeChange = (event, selectedTime) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+
+    if (selectedTime) {
+      const hours = selectedTime.getHours().toString().padStart(2, '0');
+      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+      const timeString = `${hours}:${minutes}`;
+      setPreferences({ ...preferences, notificationTime: timeString });
+    }
+  };
+
+  const getTimeDate = () => {
+    if (!preferences.notificationTime) {
+      const now = new Date();
+      now.setHours(14, 30, 0, 0);
+      return now;
+    }
+    const [hours, minutes] = preferences.notificationTime.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return date;
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '2:30 PM';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   if (loading) {
@@ -101,6 +190,41 @@ export default function PreferencesScreen({ navigation }) {
                 value={preferences.weeklyReports}
                 onValueChange={() => handleToggle('weeklyReports')}
               />
+            )}
+          />
+          <Divider />
+          <TouchableOpacity onPress={() => setShowTimePicker(true)}>
+            <List.Item
+              title="Daily Notification Time"
+              description={`Receive daily reminders at ${formatTime(preferences.notificationTime)}`}
+              left={props => <List.Icon {...props} icon="clock-outline" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+            />
+          </TouchableOpacity>
+          {showTimePicker && (
+            <DateTimePicker
+              value={getTimeDate()}
+              mode="time"
+              is24Hour={false}
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleTimeChange}
+            />
+          )}
+          <Divider />
+          <List.Item
+            title="Test Notifications"
+            description="Send test push and email notification"
+            left={props => <List.Icon {...props} icon="bell-check" />}
+            right={() => (
+              <Button
+                mode="outlined"
+                onPress={handleTestNotification}
+                loading={testingNotification}
+                disabled={testingNotification}
+                compact
+              >
+                Test
+              </Button>
             )}
           />
         </List.Section>

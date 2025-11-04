@@ -1,4 +1,5 @@
 const { prisma } = require('../config/database');
+const { sendEmail } = require('../services/emailService');
 
 exports.getProfile = async (req, res, next) => {
   try {
@@ -70,7 +71,8 @@ exports.getPreferences = async (req, res, next) => {
         notifications: true,
         emailNotifications: true,
         weeklyReports: true,
-        darkMode: true
+        darkMode: true,
+        notificationTime: true
       }
     });
 
@@ -89,7 +91,9 @@ exports.updatePreferences = async (req, res, next) => {
       emailNotifications,
       weeklyReports,
       darkMode,
-      pushToken
+      pushToken,
+      notificationTime,
+      testEmail
     } = req.body;
 
     const profile = await prisma.userProfile.update({
@@ -101,9 +105,45 @@ exports.updatePreferences = async (req, res, next) => {
         ...(emailNotifications !== undefined && { emailNotifications }),
         ...(weeklyReports !== undefined && { weeklyReports }),
         ...(darkMode !== undefined && { darkMode }),
-        ...(pushToken !== undefined && { pushToken })
+        ...(pushToken !== undefined && { pushToken }),
+        ...(notificationTime && { notificationTime })
       }
     });
+
+    // Send test email if requested
+    if (testEmail) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { email: true, username: true }
+        });
+
+        await sendEmail({
+          to: user.email,
+          subject: 'Test Notification from Samaanai',
+          html: `
+            <h2>Test Notification</h2>
+            <p>Hi ${user.username || 'there'},</p>
+            <p>This is a test email from Samaanai to verify that your email notifications are working correctly.</p>
+            <p>If you're seeing this email, your notification system is working perfectly!</p>
+            <br>
+            <p><strong>Your current notification settings:</strong></p>
+            <ul>
+              <li>Email Notifications: ${profile.emailNotifications ? 'Enabled' : 'Disabled'}</li>
+              <li>Daily Reminder Time: ${profile.notificationTime || '14:30'} UTC</li>
+              <li>Weekly Reports: ${profile.weeklyReports ? 'Enabled' : 'Disabled'}</li>
+            </ul>
+            <br>
+            <p>Best regards,<br>The Samaanai Team</p>
+          `
+        });
+
+        console.log(`Sent test email to ${user.email}`);
+      } catch (emailError) {
+        console.error('Error sending test email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     res.json({ preferences: profile });
   } catch (error) {

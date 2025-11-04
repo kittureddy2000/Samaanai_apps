@@ -47,6 +47,7 @@ model UserProfile {
   weeklyReports         Boolean  @default(true) @map("weekly_reports")
   darkMode              Boolean  @default(false) @map("dark_mode")
   pushToken             String?  @map("push_token")
+  notificationTime      String?  @default("14:30") @map("notification_time")
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
