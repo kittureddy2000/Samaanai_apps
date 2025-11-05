@@ -52,7 +52,7 @@ module.exports = {
       backgroundColor: "#ffffff"
     },
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || "https://samaanai-backend-172298808029.us-central1.run.app",
+      API_BASE_URL: process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.samaanai.com",
       eas: {
         projectId: "7b2ffe0d-3be0-459b-aec7-39e44d455cbd"
       }
