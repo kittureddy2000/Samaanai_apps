@@ -193,11 +193,19 @@ const sendTaskReminders = async () => {
 };
 
 /**
- * Send calorie entry reminders to users
+ * Send calorie entry reminders to users based on their notification_time preference
  */
 const sendCalorieReminders = async () => {
   try {
     console.log('Starting calorie entry reminder checks...');
+
+    // Get current time in HH:MM format (UTC)
+    const now = new Date();
+    const currentHour = now.getUTCHours().toString().padStart(2, '0');
+    const currentMinute = now.getUTCMinutes().toString().padStart(2, '0');
+    const currentTime = `${currentHour}:${currentMinute}`;
+
+    console.log(`Current UTC time: ${currentTime}`);
 
     // Get all active users with notifications enabled
     const users = await prisma.user.findMany({
@@ -217,9 +225,31 @@ const sendCalorieReminders = async () => {
 
     console.log(`Found ${users.length} users for calorie reminders`);
 
+    let notificationsSent = 0;
+
     for (const user of users) {
       try {
         if (!user.profile) continue;
+
+        // Get user's preferred notification time (default to 14:30 if not set)
+        const userNotificationTime = user.profile.notificationTime || '14:30';
+
+        // Check if current time matches user's preferred time (within 30-minute window)
+        // This allows for the cron job running every 30 minutes
+        const [userHour, userMinute] = userNotificationTime.split(':').map(Number);
+        const [currentHourNum, currentMinuteNum] = [parseInt(currentHour), parseInt(currentMinute)];
+
+        // Calculate if we're within 30 minutes of the user's preferred time
+        const userTimeInMinutes = userHour * 60 + userMinute;
+        const currentTimeInMinutes = currentHourNum * 60 + currentMinuteNum;
+        const timeDiff = Math.abs(currentTimeInMinutes - userTimeInMinutes);
+
+        // Skip if not within 30-minute window (considering the cron runs every 30 mins)
+        if (timeDiff >= 30) {
+          continue;
+        }
+
+        console.log(`Sending notification to ${user.username} (preferred time: ${userNotificationTime})`);
 
         // Send email reminder if enabled
         if (user.profile.emailNotifications && user.email) {
@@ -231,6 +261,7 @@ const sendCalorieReminders = async () => {
         if (user.profile.notifications && user.profile.pushToken) {
           await sendCalorieReminderNotification(user.profile.pushToken);
           console.log(`Sent calorie reminder push to ${user.username}`);
+          notificationsSent++;
         }
       } catch (error) {
         console.error(`Error sending calorie reminder to user ${user.id}:`, error);
@@ -238,7 +269,7 @@ const sendCalorieReminders = async () => {
       }
     }
 
-    console.log('Calorie entry reminder checks completed');
+    console.log(`Calorie entry reminder checks completed. Sent ${notificationsSent} push notifications.`);
   } catch (error) {
     console.error('Error in sendCalorieReminders:', error);
   }
@@ -274,20 +305,11 @@ const initializeScheduler = () => {
     timezone: 'America/Los_Angeles'
   });
 
-  // Morning calorie reminders - Run every day at 6:30 AM PST
-  cron.schedule('30 6 * * *', () => {
-    console.log('Running morning calorie reminder job...');
+  // Calorie reminders - Run every 30 minutes to check user preferences
+  // This allows personalized notification times for each user
+  cron.schedule('*/30 * * * *', () => {
+    console.log('Running personalized calorie reminder job...');
     sendCalorieReminders();
-  }, {
-    timezone: 'America/Los_Angeles'
-  });
-
-  // Evening calorie reminders - Run every day at 8:00 PM PST
-  cron.schedule('0 20 * * *', () => {
-    console.log('Running evening calorie reminder job...');
-    sendCalorieReminders();
-  }, {
-    timezone: 'America/Los_Angeles'
   });
 
   console.log('Scheduler service initialized successfully');
@@ -295,8 +317,7 @@ const initializeScheduler = () => {
   console.log('- Weekly reports: Every Monday at 8:00 AM PST');
   console.log('- Morning task reminders: Every day at 6:30 AM PST');
   console.log('- Evening task reminders: Every day at 8:00 PM PST');
-  console.log('- Morning calorie reminders: Every day at 6:30 AM PST');
-  console.log('- Evening calorie reminders: Every day at 8:00 PM PST');
+  console.log('- Personalized calorie reminders: Every 30 minutes (respects user notification_time preference)');
 };
 
 /**
