@@ -21,8 +21,8 @@ const getApiBaseUrl = () => {
     }
   }
 
-  // Default fallback - always use custom domain for production
-  const defaultUrl = 'https://api.samaanai.com';
+  // Default fallback - use staging backend URL
+  const defaultUrl = 'https://samaanai-backend-staging-362270100637.us-west1.run.app';
   console.log('⚠️  API Service - Using default API_BASE_URL:', defaultUrl);
   return defaultUrl;
 };
