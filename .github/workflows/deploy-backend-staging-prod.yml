@@ -19,7 +19,7 @@ on:
           - production
 
 env:
-  GCP_REGION: us-central1
+  GCP_REGION: us-west1
   REGISTRY: gcr.io
 
 jobs:
@@ -190,13 +190,13 @@ jobs:
             MAX_INSTANCES=100
             MEMORY="1Gi"
             CPU=1
-            CLOUD_SQL_INSTANCE="samaanai-production-db"
+            CLOUD_SQL_INSTANCE="samaanai-prod-postgres"
           else
             MIN_INSTANCES=0
             MAX_INSTANCES=10
             MEMORY="512Mi"
             CPU=1
-            CLOUD_SQL_INSTANCE="samaanai-staging-db"
+            CLOUD_SQL_INSTANCE="n8n-postgres-instance"
           fi
 
           # Get Cloud SQL connection name
@@ -244,9 +244,9 @@ jobs:
 
           # Set Cloud SQL instance based on environment
           if [[ "$ENV" == "production" ]]; then
-            CLOUD_SQL_INSTANCE="samaanai-production-db"
+            CLOUD_SQL_INSTANCE="samaanai-prod-postgres"
           else
-            CLOUD_SQL_INSTANCE="samaanai-staging-db"
+            CLOUD_SQL_INSTANCE="n8n-postgres-instance"
           fi
 
           # Get Cloud SQL connection name
