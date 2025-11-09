@@ -19,7 +19,7 @@ on:
           - production
 
 env:
-  GCP_REGION: us-central1
+  GCP_REGION: us-west1
   REGISTRY: gcr.io
 
 jobs:
@@ -54,10 +54,10 @@ jobs:
           # Set service name based on environment
           if [[ "$ENV" == "production" ]]; then
             echo "service-name=samaanai-frontend" >> $GITHUB_OUTPUT
-            echo "api-url=https://api.samaanai.com" >> $GITHUB_OUTPUT
+            echo "api-url=https://samaanai-backend-172298808029.us-west1.run.app" >> $GITHUB_OUTPUT
           else
             echo "service-name=samaanai-frontend-staging" >> $GITHUB_OUTPUT
-            echo "api-url=https://samaanai-backend-staging-hdp6ioqupa-uc.a.run.app" >> $GITHUB_OUTPUT
+            echo "api-url=https://samaanai-backend-staging-362270100637.us-west1.run.app" >> $GITHUB_OUTPUT
           fi
 
           echo "🎯 Deploying to: $ENV"
