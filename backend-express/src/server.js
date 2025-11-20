@@ -17,6 +17,7 @@ const nutritionRoutes = require('./routes/nutrition');
 const todoRoutes = require('./routes/todo');
 const userRoutes = require('./routes/user');
 const emailTestRoutes = require('./routes/emailTest');
+const integrationRoutes = require('./routes/integrations');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -90,7 +91,8 @@ app.get('/', (req, res) => {
       auth: '/api/v1/auth',
       todo: '/api/v1/todo',
       nutrition: '/api/v1/nutrition',
-      user: '/api/v1/user'
+      user: '/api/v1/user',
+      integrations: '/api/v1/integrations'
     },
     documentation: 'https://github.com/kittureddy2000/Samaanai_apps'
   });
@@ -112,6 +114,7 @@ app.use('/api/v1/nutrition', nutritionRoutes);
 app.use('/api/v1/todo', todoRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/test', emailTestRoutes);
+app.use('/api/v1/integrations', integrationRoutes);
 
 // 404 handler
 app.use((req, res) => {
