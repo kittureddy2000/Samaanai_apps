@@ -28,8 +28,26 @@ model User {
   weightEntries     WeightEntry[]
   webauthnCredentials WebAuthnCredential[]
   tasks             Task[]
+  integrations      Integration[]
 
   @@map("auth_user")
+}
+
+model Integration {
+  id                    String    @id @default(uuid())
+  userId                String    @map("user_id")
+  provider              String    // e.g., 'microsoft'
+  accessToken           String    @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  expiresAt             DateTime? @map("expires_at")
+  scope                 String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("integrations")
 }
 
 model UserProfile {

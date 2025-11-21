@@ -29,7 +29,7 @@ Create a Redis instance in the same region as your Cloud Run service:
 \`\`\`bash
 # Create VPC connector (required for Cloud Run to access Memorystore)
 gcloud compute networks vpc-access connectors create samaanai-connector \\
-  --region=us-central1 \\
+  --region= \\
   --network=default \\
   --range=10.8.0.0/28 \\
   --project=samaanai-stg-1009-124126
@@ -37,14 +37,14 @@ gcloud compute networks vpc-access connectors create samaanai-connector \\
 # Create Memorystore Redis instance (1GB, Basic tier)
 gcloud redis instances create samaanai-redis-staging \\
   --size=1 \\
-  --region=us-central1 \\
+  --region= \\
   --redis-version=redis_7_0 \\
   --tier=basic \\
   --project=samaanai-stg-1009-124126
 
 # Get the Redis host IP
 gcloud redis instances describe samaanai-redis-staging \\
-  --region=us-central1 \\
+  --region= \\
   --format="value(host)" \\
   --project=samaanai-stg-1009-124126
 \`\`\`
@@ -59,7 +59,7 @@ Add VPC connector to Cloud Run:
 gcloud run services update samaanai-backend-staging \\
   --vpc-connector=samaanai-connector \\
   --vpc-egress=private-ranges-only \\
-  --region=us-central1 \\
+  --region= \\
   --project=samaanai-stg-1009-124126
 \`\`\`
 
@@ -74,7 +74,7 @@ echo -n "10.x.x.x:6379" | gcloud secrets create REDIS_URL \\
 # Update Cloud Run to use the secret
 gcloud run services update samaanai-backend-staging \\
   --set-secrets REDIS_URL=REDIS_URL:latest \\
-  --region=us-central1 \\
+  --region= \\
   --project=samaanai-stg-1009-124126
 \`\`\`
 
