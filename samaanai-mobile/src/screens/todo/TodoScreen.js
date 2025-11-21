@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { Text, Card, ActivityIndicator, FAB, Menu, Button } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 
@@ -16,6 +17,11 @@ export default function TodoScreen({ navigation }) {
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed', 'overdue'
   const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'name', 'createdAt'
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+
+  // Microsoft Integration state
+  const [microsoftConnected, setMicrosoftConnected] = useState(false);
+  const [microsoftSyncing, setMicrosoftSyncing] = useState(false);
+  const [showMicrosoftBanner, setShowMicrosoftBanner] = useState(true);
 
   const fetchTasks = async () => {
     try {
@@ -77,9 +83,63 @@ export default function TodoScreen({ navigation }) {
     }
   };
 
+  const checkMicrosoftStatus = async () => {
+    try {
+      const { data } = await api.getMicrosoftStatus();
+      setMicrosoftConnected(data.connected);
+    } catch (err) {
+      console.error('Microsoft status error:', err);
+    }
+  };
+
+  const handleConnectMicrosoft = async () => {
+    try {
+      const { data } = await api.connectMicrosoft();
+
+      // Open Microsoft OAuth in browser
+      const result = await WebBrowser.openBrowserAsync(data.authorizationUrl);
+
+      if (result.type === 'cancel') {
+        Alert.alert('Cancelled', 'Microsoft authentication was cancelled');
+        return;
+      }
+
+      // Check connection status after OAuth
+      setTimeout(async () => {
+        await checkMicrosoftStatus();
+        if (microsoftConnected) {
+          Alert.alert('Success', 'Microsoft To Do connected successfully!');
+        }
+      }, 2000);
+    } catch (err) {
+      console.error('Connect Microsoft error:', err);
+      Alert.alert('Error', err.response?.data?.error || 'Failed to connect to Microsoft');
+    }
+  };
+
+  const handleSyncMicrosoft = async () => {
+    try {
+      setMicrosoftSyncing(true);
+      const { data } = await api.syncMicrosoftTasks();
+
+      Alert.alert(
+        'Sync Complete',
+        `Imported: ${data.imported}\nUpdated: ${data.updated}\nErrors: ${data.errors}`
+      );
+
+      // Refresh tasks
+      await fetchAllData();
+    } catch (err) {
+      console.error('Sync Microsoft error:', err);
+      Alert.alert('Sync Failed', err.response?.data?.error || 'Failed to sync Microsoft tasks');
+    } finally {
+      setMicrosoftSyncing(false);
+    }
+  };
+
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchTasks(), fetchStats()]);
+    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus()]);
     setLoading(false);
     setRefreshing(false);
   };
@@ -161,6 +221,14 @@ export default function TodoScreen({ navigation }) {
                 <Text style={[styles.taskName, task.completed && styles.completedText]}>
                   {task.name}
                 </Text>
+                {task.microsoftTodoId && (
+                  <MaterialCommunityIcons
+                    name="microsoft"
+                    size={14}
+                    color="#00A4EF"
+                    style={styles.microsoftIcon}
+                  />
+                )}
                 {hasAttachment && (
                   <MaterialCommunityIcons
                     name="paperclip"
@@ -226,6 +294,37 @@ export default function TodoScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Microsoft Integration Banner */}
+      {showMicrosoftBanner && (
+        <Banner
+          visible={true}
+          actions={[
+            {
+              label: 'Dismiss',
+              onPress: () => setShowMicrosoftBanner(false),
+            },
+            microsoftConnected
+              ? {
+                  label: microsoftSyncing ? 'Syncing...' : 'Sync Now',
+                  onPress: handleSyncMicrosoft,
+                  disabled: microsoftSyncing,
+                  icon: microsoftSyncing ? 'sync' : 'cloud-sync',
+                }
+              : {
+                  label: 'Connect',
+                  onPress: handleConnectMicrosoft,
+                  icon: 'link-variant',
+                },
+          ]}
+          icon={microsoftConnected ? 'microsoft' : 'microsoft'}
+          style={styles.microsoftBanner}
+        >
+          {microsoftConnected
+            ? 'Microsoft To Do connected. Tap Sync Now to import tasks.'
+            : 'Connect Microsoft To Do to sync your tasks.'}
+        </Banner>
+      )}
+
       {/* Stats Card */}
       {stats && (
         <Card style={styles.statsCard}>
@@ -445,6 +544,10 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     marginTop: -2
   },
+  microsoftIcon: {
+    marginLeft: 2,
+    marginTop: -2
+  },
   completedText: {
     textDecorationLine: 'line-through',
     color: '#999'
@@ -512,5 +615,9 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 80
+  },
+  microsoftBanner: {
+    backgroundColor: '#e3f2fd',
+    marginBottom: 0
   }
 });

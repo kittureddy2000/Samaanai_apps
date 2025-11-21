@@ -202,7 +202,20 @@ export const api = {
     apiClient.put('/user/preferences', preferences),
 
   registerPushToken: (pushToken) =>
-    apiClient.post('/user/push-token', { pushToken })
+    apiClient.post('/user/push-token', { pushToken }),
+
+  // Microsoft To Do Integration
+  getMicrosoftStatus: () =>
+    apiClient.get('/integrations/microsoft/status'),
+
+  connectMicrosoft: () =>
+    apiClient.post('/integrations/microsoft/connect'),
+
+  syncMicrosoftTasks: () =>
+    apiClient.post('/integrations/microsoft/sync'),
+
+  disconnectMicrosoft: () =>
+    apiClient.delete('/integrations/microsoft/disconnect')
 };
 
 export default api;
