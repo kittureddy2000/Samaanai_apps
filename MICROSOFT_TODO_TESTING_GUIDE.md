@@ -321,14 +321,23 @@ https://samaanai-backend-staging-hdp6ioqupa-uw.a.run.app/api/v1/integrations/mic
 
 ---
 
-### Issue 4: Sync returns "No integration found"
+### Issue 4: "Network request failed" during OAuth token exchange
+**Cause:** Cloud Run service had VPC egress set to `all-traffic`, preventing external API calls to Microsoft.
+
+**Solution:** VPC egress changed to `private-ranges-only` (fixed in deployment - November 22, 2025).
+- Database traffic goes through VPC connector (private)
+- External API calls (Microsoft OAuth) go direct from Cloud Run
+
+---
+
+### Issue 5: Sync returns "No integration found"
 **Cause:** User hasn't completed OAuth flow or connection failed.
 
 **Solution:** Complete Step 3-4 again to establish connection.
 
 ---
 
-### Issue 5: No tasks synced (imported: 0)
+### Issue 6: No tasks synced (imported: 0)
 **Possible Causes:**
 - Microsoft To Do account has no tasks
 - User selected wrong Microsoft account

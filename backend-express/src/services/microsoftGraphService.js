@@ -106,20 +106,52 @@ exports.getTasksListId = async (accessToken) => {
 };
 
 /**
- * Get all tasks from a specific list
+ * Get all tasks from a specific list with pagination
  * @param {string} accessToken - Valid access token
  * @param {string} listId - To Do list ID
+ * @param {boolean} excludeCompleted - Exclude completed tasks (default: true)
  * @returns {Promise<Array<Object>>} - Array of Microsoft To Do tasks
  */
-exports.getTasksFromList = async (accessToken, listId) => {
+exports.getTasksFromList = async (accessToken, listId, excludeCompleted = true) => {
   try {
-    const data = await makeGraphRequest(accessToken, `/me/todo/lists/${listId}/tasks`);
+    let allTasks = [];
+    let nextLink = null;
 
-    if (!data || !data.value) {
-      return [];
+    // Build query parameters
+    const queryParams = [];
+
+    // Filter out completed tasks if requested
+    if (excludeCompleted) {
+      queryParams.push("$filter=status ne 'completed'");
     }
 
-    return data.value;
+    // Request maximum page size (999 is the max for Microsoft Graph)
+    queryParams.push('$top=999');
+
+    const queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+    let endpoint = `/me/todo/lists/${listId}/tasks${queryString}`;
+
+    // Handle pagination - keep fetching until no more pages
+    do {
+      const data = await makeGraphRequest(accessToken, nextLink || endpoint);
+
+      if (data && data.value) {
+        allTasks = allTasks.concat(data.value);
+      }
+
+      // Check for next page
+      nextLink = data['@odata.nextLink'];
+
+      // If there's a nextLink, extract just the path and query params
+      if (nextLink) {
+        const url = new URL(nextLink);
+        nextLink = url.pathname + url.search;
+      }
+    } while (nextLink);
+
+    console.log(`Fetched ${allTasks.length} tasks from Microsoft To Do (excludeCompleted: ${excludeCompleted})`);
+
+    return allTasks;
   } catch (error) {
     console.error(`Error fetching tasks from list ${listId}:`, error);
     throw new Error('Failed to fetch tasks from Microsoft To Do');
@@ -174,9 +206,10 @@ exports.transformMicrosoftTask = (msTask) => {
 /**
  * Get all tasks from the default "Tasks" list and transform them
  * @param {string} accessToken - Valid access token
+ * @param {boolean} excludeCompleted - Exclude completed tasks (default: true)
  * @returns {Promise<Array<Object>>} - Array of transformed tasks
  */
-exports.getAndTransformTasks = async (accessToken) => {
+exports.getAndTransformTasks = async (accessToken, excludeCompleted = true) => {
   try {
     // Get the Tasks list ID
     const listId = await exports.getTasksListId(accessToken);
@@ -186,11 +219,13 @@ exports.getAndTransformTasks = async (accessToken) => {
       return [];
     }
 
-    // Get all tasks from the list
-    const msTasks = await exports.getTasksFromList(accessToken, listId);
+    // Get all tasks from the list (excluding completed by default)
+    const msTasks = await exports.getTasksFromList(accessToken, listId, excludeCompleted);
 
     // Transform each task to Samaanai format
     const transformedTasks = msTasks.map(msTask => exports.transformMicrosoftTask(msTask));
+
+    console.log(`Transformed ${transformedTasks.length} tasks from Microsoft To Do`);
 
     return transformedTasks;
   } catch (error) {
