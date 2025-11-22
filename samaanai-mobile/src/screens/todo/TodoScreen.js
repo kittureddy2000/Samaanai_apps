@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
-import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner, Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
@@ -14,9 +14,10 @@ export default function TodoScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'completed', 'overdue'
+  const [filter, setFilter] = useState('pending'); // 'all', 'pending', 'completed', 'overdue' - Default to pending
   const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'name', 'createdAt'
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Microsoft Integration state
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
@@ -42,6 +43,15 @@ export default function TodoScreen({ navigation }) {
       if (filter === 'overdue') {
         filteredTasks = filteredTasks.filter(task => {
           return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+        });
+      }
+
+      // Filter by search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filteredTasks = filteredTasks.filter(task => {
+          return task.name.toLowerCase().includes(query) ||
+                 (task.description && task.description.toLowerCase().includes(query));
         });
       }
 
@@ -146,7 +156,7 @@ export default function TodoScreen({ navigation }) {
 
   useEffect(() => {
     fetchAllData();
-  }, [filter, sortBy]);
+  }, [filter, sortBy, searchQuery]);
 
   useEffect(() => {
     if (isFocused) {
@@ -403,6 +413,16 @@ export default function TodoScreen({ navigation }) {
         </Card>
       )}
 
+      {/* Search Bar */}
+      <Searchbar
+        placeholder="Search tasks..."
+        onChangeText={setSearchQuery}
+        value={searchQuery}
+        style={styles.searchBar}
+        icon="magnify"
+        clearIcon={searchQuery ? "close" : undefined}
+      />
+
       {/* Tasks List */}
       <ScrollView
         style={styles.tasksList}
@@ -458,6 +478,13 @@ const styles = StyleSheet.create({
   statsCard: {
     margin: 12,
     marginBottom: 6
+  },
+  searchBar: {
+    margin: 12,
+    marginTop: 6,
+    marginBottom: 12,
+    elevation: 0,
+    backgroundColor: '#fff'
   },
   statsHeader: {
     flexDirection: 'row',
