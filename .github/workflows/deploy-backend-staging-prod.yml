@@ -212,24 +212,46 @@ jobs:
           echo "   Image: $IMAGE"
           echo "   Cloud SQL: $SQL_CONNECTION"
 
-          gcloud run deploy $SERVICE_NAME \
-            --image $IMAGE \
-            --region ${{ env.GCP_REGION }} \
-            --platform managed \
-            --allow-unauthenticated \
-            --port 8080 \
-            --set-env-vars NODE_ENV=$ENV,ENVIRONMENT=$ENV,MICROSOFT_TENANT=common,MICROSOFT_GRAPH_API_BASE_URL=https://graph.microsoft.com/v1.0,MICROSOFT_AUTHORITY_URL=https://login.microsoftonline.com,MICROSOFT_REDIRECT_URI=$MICROSOFT_REDIRECT_URI \
-            --set-secrets DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GOOGLE_CALLBACK_URL=GOOGLE_CALLBACK_URL:latest,GOOGLE_SUCCESS_REDIRECT=GOOGLE_SUCCESS_REDIRECT:latest,MOBILE_GOOGLE_SUCCESS_REDIRECT=MOBILE_GOOGLE_SUCCESS_REDIRECT:latest,SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_SECURE=SMTP_SECURE:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,FROM_EMAIL=FROM_EMAIL:latest,APP_NAME=APP_NAME:latest,MICROSOFT_CLIENT_ID=MICROSOFT_CLIENT_ID:latest,MICROSOFT_CLIENT_SECRET=MICROSOFT_CLIENT_SECRET:latest \
-            --add-cloudsql-instances $SQL_CONNECTION \
-            --vpc-connector n8n-vpc-connector \
-            --vpc-egress private-ranges-only \
-            --min-instances $MIN_INSTANCES \
-            --max-instances $MAX_INSTANCES \
-            --memory $MEMORY \
-            --cpu $CPU \
-            --timeout 300 \
-            --concurrency 80 \
-            --labels environment=$ENV,app=samaanai,component=backend
+          # Build deployment command based on environment
+          if [[ "$ENV" == "production" ]]; then
+            # Production: No VPC connector
+            gcloud run deploy $SERVICE_NAME \
+              --image $IMAGE \
+              --region ${{ env.GCP_REGION }} \
+              --platform managed \
+              --allow-unauthenticated \
+              --port 8080 \
+              --set-env-vars NODE_ENV=$ENV,ENVIRONMENT=$ENV,MICROSOFT_TENANT=common,MICROSOFT_GRAPH_API_BASE_URL=https://graph.microsoft.com/v1.0,MICROSOFT_AUTHORITY_URL=https://login.microsoftonline.com,MICROSOFT_REDIRECT_URI=$MICROSOFT_REDIRECT_URI \
+              --set-secrets DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GOOGLE_CALLBACK_URL=GOOGLE_CALLBACK_URL:latest,GOOGLE_SUCCESS_REDIRECT=GOOGLE_SUCCESS_REDIRECT:latest,MOBILE_GOOGLE_SUCCESS_REDIRECT=MOBILE_GOOGLE_SUCCESS_REDIRECT:latest,SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_SECURE=SMTP_SECURE:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,FROM_EMAIL=FROM_EMAIL:latest,APP_NAME=APP_NAME:latest,MICROSOFT_CLIENT_ID=MICROSOFT_CLIENT_ID:latest,MICROSOFT_CLIENT_SECRET=MICROSOFT_CLIENT_SECRET:latest \
+              --add-cloudsql-instances $SQL_CONNECTION \
+              --min-instances $MIN_INSTANCES \
+              --max-instances $MAX_INSTANCES \
+              --memory $MEMORY \
+              --cpu $CPU \
+              --timeout 300 \
+              --concurrency 80 \
+              --labels environment=$ENV,app=samaanai,component=backend
+          else
+            # Staging: Use VPC connector for n8n
+            gcloud run deploy $SERVICE_NAME \
+              --image $IMAGE \
+              --region ${{ env.GCP_REGION }} \
+              --platform managed \
+              --allow-unauthenticated \
+              --port 8080 \
+              --set-env-vars NODE_ENV=$ENV,ENVIRONMENT=$ENV,MICROSOFT_TENANT=common,MICROSOFT_GRAPH_API_BASE_URL=https://graph.microsoft.com/v1.0,MICROSOFT_AUTHORITY_URL=https://login.microsoftonline.com,MICROSOFT_REDIRECT_URI=$MICROSOFT_REDIRECT_URI \
+              --set-secrets DATABASE_URL=DATABASE_URL:latest,JWT_SECRET=JWT_SECRET:latest,JWT_REFRESH_SECRET=JWT_REFRESH_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,GOOGLE_CALLBACK_URL=GOOGLE_CALLBACK_URL:latest,GOOGLE_SUCCESS_REDIRECT=GOOGLE_SUCCESS_REDIRECT:latest,MOBILE_GOOGLE_SUCCESS_REDIRECT=MOBILE_GOOGLE_SUCCESS_REDIRECT:latest,SMTP_HOST=SMTP_HOST:latest,SMTP_PORT=SMTP_PORT:latest,SMTP_SECURE=SMTP_SECURE:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASS=SMTP_PASS:latest,FROM_EMAIL=FROM_EMAIL:latest,APP_NAME=APP_NAME:latest,MICROSOFT_CLIENT_ID=MICROSOFT_CLIENT_ID:latest,MICROSOFT_CLIENT_SECRET=MICROSOFT_CLIENT_SECRET:latest \
+              --add-cloudsql-instances $SQL_CONNECTION \
+              --vpc-connector n8n-vpc-connector \
+              --vpc-egress private-ranges-only \
+              --min-instances $MIN_INSTANCES \
+              --max-instances $MAX_INSTANCES \
+              --memory $MEMORY \
+              --cpu $CPU \
+              --timeout 300 \
+              --concurrency 80 \
+              --labels environment=$ENV,app=samaanai,component=backend
+          fi
 
       - name: Run Database Migrations
         run: |
