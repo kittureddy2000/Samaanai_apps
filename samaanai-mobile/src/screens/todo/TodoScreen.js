@@ -342,43 +342,54 @@ export default function TodoScreen({ navigation }) {
           <Card.Content>
             <View style={styles.statsHeader}>
               <Text style={styles.statsTitle}>Tasks Overview</Text>
-              <Menu
-                visible={sortMenuVisible}
-                onDismiss={() => setSortMenuVisible(false)}
-                anchor={
-                  <TouchableOpacity
-                    onPress={() => setSortMenuVisible(true)}
-                    style={styles.sortIconButton}
-                  >
-                    <MaterialCommunityIcons name="sort" size={20} color="#666" />
-                  </TouchableOpacity>
-                }
-              >
-                <Menu.Item
-                  onPress={() => {
-                    setSortBy('dueDate');
-                    setSortMenuVisible(false);
-                  }}
-                  title="Sort by Due Date"
-                  leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+              <View style={styles.headerActions}>
+                <Searchbar
+                  placeholder="Search tasks..."
+                  onChangeText={setSearchQuery}
+                  value={searchQuery}
+                  style={styles.compactSearchBar}
+                  inputStyle={styles.compactSearchInput}
+                  icon="magnify"
+                  clearIcon={searchQuery ? "close" : undefined}
                 />
-                <Menu.Item
-                  onPress={() => {
-                    setSortBy('name');
-                    setSortMenuVisible(false);
-                  }}
-                  title="Sort by Name"
-                  leadingIcon={sortBy === 'name' ? 'check' : undefined}
-                />
-                <Menu.Item
-                  onPress={() => {
-                    setSortBy('createdAt');
-                    setSortMenuVisible(false);
-                  }}
-                  title="Sort by Created Date"
-                  leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
-                />
-              </Menu>
+                <Menu
+                  visible={sortMenuVisible}
+                  onDismiss={() => setSortMenuVisible(false)}
+                  anchor={
+                    <TouchableOpacity
+                      onPress={() => setSortMenuVisible(true)}
+                      style={styles.sortIconButton}
+                    >
+                      <MaterialCommunityIcons name="sort" size={20} color="#666" />
+                    </TouchableOpacity>
+                  }
+                >
+                  <Menu.Item
+                    onPress={() => {
+                      setSortBy('dueDate');
+                      setSortMenuVisible(false);
+                    }}
+                    title="Sort by Due Date"
+                    leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      setSortBy('name');
+                      setSortMenuVisible(false);
+                    }}
+                    title="Sort by Name"
+                    leadingIcon={sortBy === 'name' ? 'check' : undefined}
+                  />
+                  <Menu.Item
+                    onPress={() => {
+                      setSortBy('createdAt');
+                      setSortMenuVisible(false);
+                    }}
+                    title="Sort by Created Date"
+                    leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
+                  />
+                </Menu>
+              </View>
             </View>
             <View style={styles.statsRow}>
               <TouchableOpacity
@@ -413,16 +424,6 @@ export default function TodoScreen({ navigation }) {
           </Card.Content>
         </Card>
       )}
-
-      {/* Search Bar */}
-      <Searchbar
-        placeholder="Search tasks..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-        icon="magnify"
-        clearIcon={searchQuery ? "close" : undefined}
-      />
 
       {/* Tasks List */}
       <ScrollView
@@ -496,7 +497,28 @@ const styles = StyleSheet.create({
   statsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333'
+    color: '#333',
+    flex: 0,
+    minWidth: 100
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+    marginLeft: 8
+  },
+  compactSearchBar: {
+    flex: 1,
+    height: 36,
+    elevation: 0,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 18
+  },
+  compactSearchInput: {
+    fontSize: 14,
+    minHeight: 0,
+    paddingVertical: 0
   },
   sortIconButton: {
     padding: 6,
