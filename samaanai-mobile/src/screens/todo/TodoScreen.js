@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
 import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner, Searchbar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ export default function TodoScreen({ navigation }) {
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]); // Store all tasks from API
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('pending'); // 'all', 'pending', 'completed', 'overdue' - Default to pending
@@ -27,37 +27,9 @@ export default function TodoScreen({ navigation }) {
   const fetchTasks = async () => {
     try {
       setError(null);
-      let params = {};
-
-      if (filter === 'pending') {
-        params.completed = false;
-      } else if (filter === 'completed') {
-        params.completed = true;
-      }
-      // 'all' and 'overdue' fetch all tasks, filtering happens client-side for overdue
-
-      const { data } = await api.getTasks(params);
-      let filteredTasks = data.tasks;
-
-      // Filter overdue tasks client-side
-      if (filter === 'overdue') {
-        filteredTasks = filteredTasks.filter(task => {
-          return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
-        });
-      }
-
-      // Filter by search query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        filteredTasks = filteredTasks.filter(task => {
-          return task.name.toLowerCase().includes(query) ||
-                 (task.description && task.description.toLowerCase().includes(query));
-        });
-      }
-
-      // Sort tasks
-      const sortedTasks = sortTasks(filteredTasks, sortBy);
-      setTasks(sortedTasks);
+      // Always fetch ALL tasks - filtering happens client-side
+      const { data } = await api.getTasks({});
+      setAllTasks(data.tasks);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load tasks');
       console.error('Tasks error:', err);
@@ -147,6 +119,35 @@ export default function TodoScreen({ navigation }) {
     }
   };
 
+  // Client-side filtering and sorting using useMemo to prevent re-fetching
+  const tasks = useMemo(() => {
+    let filteredTasks = [...allTasks];
+
+    // Apply filter
+    if (filter === 'pending') {
+      filteredTasks = filteredTasks.filter(task => !task.completed);
+    } else if (filter === 'completed') {
+      filteredTasks = filteredTasks.filter(task => task.completed);
+    } else if (filter === 'overdue') {
+      filteredTasks = filteredTasks.filter(task => {
+        return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+      });
+    }
+    // 'all' includes everything
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredTasks = filteredTasks.filter(task => {
+        return task.name.toLowerCase().includes(query) ||
+               (task.description && task.description.toLowerCase().includes(query));
+      });
+    }
+
+    // Apply sorting
+    return sortTasks(filteredTasks, sortBy);
+  }, [allTasks, filter, sortBy, searchQuery]);
+
   const fetchAllData = async () => {
     setLoading(true);
     await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus()]);
@@ -156,7 +157,7 @@ export default function TodoScreen({ navigation }) {
 
   useEffect(() => {
     fetchAllData();
-  }, [filter, sortBy, searchQuery]);
+  }, []);
 
   useEffect(() => {
     if (isFocused) {
