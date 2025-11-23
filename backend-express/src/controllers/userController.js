@@ -155,7 +155,14 @@ exports.registerPushToken = async (req, res, next) => {
   try {
     const { pushToken } = req.body;
 
+    console.log('=== Push Token Registration Request ===');
+    console.log('User ID:', req.user.id);
+    console.log('Username:', req.user.username);
+    console.log('Push Token:', pushToken);
+    console.log('Request Body:', JSON.stringify(req.body));
+
     if (!pushToken) {
+      console.error('❌ Push token missing from request body');
       return res.status(400).json({ error: 'Push token is required' });
     }
 
@@ -169,8 +176,12 @@ exports.registerPushToken = async (req, res, next) => {
       }
     });
 
+    console.log('✅ Push token registered successfully for user:', req.user.username);
+    console.log('Profile updated:', { userId: profile.userId, hasPushToken: !!profile.pushToken });
+
     res.json({ success: true, message: 'Push token registered successfully' });
   } catch (error) {
+    console.error('❌ Error registering push token:', error);
     next(error);
   }
 };

@@ -34,15 +34,29 @@ export const AuthProvider = ({ children }) => {
 
   const registerPushToken = async () => {
     try {
+      console.log('=== Starting Push Token Registration ===');
       const pushToken = await registerForPushNotificationsAsync();
+
+      console.log('Push token obtained:', pushToken ? 'YES' : 'NO');
       if (pushToken) {
-        console.log('Registering push token with backend:', pushToken);
-        await api.registerPushToken(pushToken);
-        console.log('Push token registered successfully');
+        console.log('Push token value:', pushToken);
+        console.log('Calling backend API to register push token...');
+
+        const response = await api.registerPushToken(pushToken);
+
+        console.log('✅ Backend response:', response.data);
+        console.log('✅ Push token registered successfully');
+      } else {
+        console.warn('⚠️  No push token obtained (might be simulator or permissions denied)');
       }
     } catch (error) {
       // Don't fail authentication if push token registration fails
-      console.error('Error registering push token:', error);
+      console.error('❌ Error registering push token:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
     }
   };
 
