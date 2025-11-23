@@ -191,7 +191,7 @@ jobs:
             MEMORY="1Gi"
             CPU=1
             CLOUD_SQL_INSTANCE="samaanai-prod-postgres"
-            MICROSOFT_REDIRECT_URI="https://samaanai-backend-362270100637.us-west1.run.app/api/v1/integrations/microsoft/callback"
+            MICROSOFT_REDIRECT_URI="https://api.samaanai.com/api/v1/integrations/microsoft/callback"
           else
             MIN_INSTANCES=0
             MAX_INSTANCES=10
