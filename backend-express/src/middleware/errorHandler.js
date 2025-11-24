@@ -36,15 +36,6 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Plaid errors
-  if (err.error_code) {
-    return res.status(err.status_code || 500).json({
-      error: 'Plaid API error',
-      code: err.error_code,
-      message: err.error_message
-    });
-  }
-
   // Default error
   res.status(err.statusCode || 500).json({
     error: err.message || 'Internal server error',

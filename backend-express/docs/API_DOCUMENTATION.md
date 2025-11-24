@@ -201,10 +201,6 @@ const options = {
       {
         name: 'Nutrition',
         description: 'Nutrition tracking and meal logging'
-      },
-      {
-        name: 'Finance',
-        description: 'Financial management and Plaid integration'
       }
     ]
   },

@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }) {
       <View style={styles.content}>
         <Title style={styles.title}>Welcome to Samaanai</Title>
         <Text style={styles.subtitle}>
-          Manage your finances and nutrition in one place
+          Manage your nutrition and tasks in one place
         </Text>
 
         <TextInput
