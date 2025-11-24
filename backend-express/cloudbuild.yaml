@@ -59,7 +59,7 @@ steps:
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--set-env-vars=NODE_ENV=production,PORT=8080'
-      - '--set-secrets=JWT_SECRET=jwt-secret:latest,JWT_REFRESH_SECRET=jwt-refresh-secret:latest,PLAID_CLIENT_ID=plaid-client-id:latest,PLAID_SECRET=plaid-secret:latest,DATABASE_URL=database-url:latest'
+      - '--set-secrets=JWT_SECRET=jwt-secret:latest,JWT_REFRESH_SECRET=jwt-refresh-secret:latest,DATABASE_URL=database-url:latest'
       - '--add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}'
       - '--memory=1Gi'
       - '--cpu=1'

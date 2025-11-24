@@ -297,8 +297,7 @@ Production API endpoints:
 - `/api/v1/users/*` - User management
 - `/api/v1/todo/*` - Task management
 - `/api/v1/nutrition/*` - Nutrition tracking
-- `/api/v1/finance/*` - Finance tracking
-- `/api/v1/plaid/*` - Plaid banking integration
+- `/api/v1/integrations/*` - Microsoft To Do integration
 
 **⚠️ Production API**: All endpoints handle live user data
 
@@ -313,10 +312,8 @@ Production database containing:
 - User accounts and authentication tokens
 - Personal todo/task data
 - Nutrition tracking and meal logs
-- Finance tracking and transactions
-- Plaid banking connections
 - User notification preferences
-- OAuth integrations
+- OAuth integrations (Google, Microsoft)
 
 **Schema Version**: Managed by Prisma ORM
 **Migration History**: `/backend-express/prisma/migrations`

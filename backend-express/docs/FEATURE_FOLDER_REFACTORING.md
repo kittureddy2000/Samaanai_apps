@@ -10,19 +10,16 @@ src/
 │   ├── authController.js
 │   ├── nutritionController.js
 │   ├── todoController.js
-│   ├── financeController.js
-│   └── plaidController.js
+│   └── integrationController.js
 ├── routes/          # All routes mixed together
 │   ├── auth.js
 │   ├── nutrition.js
 │   ├── todo.js
-│   ├── finance.js
-│   └── plaid.js
+│   └── integrations.js
 ├── services/        # All services mixed together
 │   ├── emailService.js
 │   ├── pushNotificationService.js
-│   ├── schedulerService.js
-│   └── plaidService.js
+│   └── schedulerService.js
 └── middleware/
     ├── auth.js
     ├── rateLimiter.js
@@ -65,13 +62,12 @@ src/
 │   │   ├── todo.validation.js
 │   │   ├── todo.test.js
 │   │   └── index.js
-│   ├── finance/
-│   │   ├── finance.routes.js
-│   │   ├── finance.controller.js
-│   │   ├── finance.service.js
-│   │   ├── plaid.service.js      # Feature-specific service
-│   │   ├── finance.validation.js
-│   │   ├── finance.test.js
+│   ├── integrations/
+│   │   ├── integrations.routes.js
+│   │   ├── integrations.controller.js
+│   │   ├── microsoft.service.js  # Feature-specific service
+│   │   ├── integrations.validation.js
+│   │   ├── integrations.test.js
 │   │   └── index.js
 │   └── notifications/             # Cross-cutting feature
 │       ├── email.service.js
@@ -217,18 +213,7 @@ mv src/controllers/nutritionController.js src/features/nutrition/nutrition.contr
 # Update imports, create index.js, test, cleanup
 ```
 
-**Week 3: finance**
-```bash
-mkdir -p src/features/finance
-mv src/routes/finance.js src/features/finance/finance.routes.js
-mv src/routes/plaid.js src/features/finance/plaid.routes.js
-mv src/controllers/financeController.js src/features/finance/finance.controller.js
-mv src/controllers/plaidController.js src/features/finance/plaid.controller.js
-mv src/services/plaidService.js src/features/finance/plaid.service.js
-# Update imports, create index.js, test, cleanup
-```
-
-**Week 4: auth**
+**Week 3: auth**
 ```bash
 mkdir -p src/features/auth
 mv src/routes/auth.js src/features/auth/auth.routes.js
@@ -634,11 +619,7 @@ src/features/todo/
 - [ ] Week 2: Migrate `nutrition` feature
   - [ ] Same steps as todo
 
-- [ ] Week 3: Migrate `finance` feature
-  - [ ] Same steps as todo
-  - [ ] Include plaid service
-
-- [ ] Week 4: Migrate `auth` feature
+- [ ] Week 3: Migrate `auth` feature
   - [ ] Same steps as todo
 
 - [ ] Week 5: Extract `notifications` feature

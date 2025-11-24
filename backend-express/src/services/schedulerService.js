@@ -64,17 +64,9 @@ const calculateWeeklyReport = async (userId) => {
     completedThisWeek: tasksCompletedThisWeek
   };
 
-  // Get finance stats (if Plaid integration exists)
-  // This is a placeholder - adjust based on your finance schema
-  const financeStats = {
-    totalBalance: 0,
-    weeklySpending: 0
-  };
-
   return {
     nutrition: nutritionStats.daysLogged > 0 ? nutritionStats : null,
-    tasks: taskStats,
-    finance: financeStats.totalBalance !== 0 ? financeStats : null
+    tasks: taskStats
   };
 };
 

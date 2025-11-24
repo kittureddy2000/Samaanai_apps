@@ -26,13 +26,6 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 - Daily nutrition reports and progress monitoring
 - Goal setting and achievement tracking
 
-### Finance Management
-- Plaid integration for bank account aggregation
-- Real-time transaction tracking and categorization
-- Net worth calculation and trending
-- Spending analytics by category
-- Multiple account support (checking, savings, credit cards)
-
 ### Task Management
 - Create and organize tasks with due dates
 - Task completion tracking
@@ -71,7 +64,7 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 │  │   • Node.js 18+                                   │  │
 │  │   • Passport.js (Local + Google OAuth)            │  │
 │  │   • JWT Authentication                            │  │
-│  │   • Plaid SDK Integration                         │  │
+│  │   • Microsoft Graph API Integration               │  │
 │  └──────────────────────────────────────────────────┘  │
 └─────────────────┬───────────────────────────────────────┘
                   │ Prisma ORM
@@ -83,7 +76,6 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 │  │   PostgreSQL Database                             │  │
 │  │   • User authentication                           │  │
 │  │   • Nutrition data (meals, exercises, goals)      │  │
-│  │   • Finance data (accounts, transactions)         │  │
 │  │   • Tasks and todos                               │  │
 │  └──────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────┘
@@ -124,7 +116,6 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 - **Framework**: Express.js
 - **ORM**: Prisma
 - **Authentication**: Passport.js (Local + Google OAuth)
-- **Finance**: Plaid SDK
 - **Validation**: Joi
 
 ### Database
@@ -532,13 +523,6 @@ eas submit --platform ios
 - `GET /api/v1/auth/google` - Google OAuth login
 - `POST /api/v1/auth/refresh` - Refresh access token
 
-**Finance:**
-- `POST /api/v1/plaid/create-link-token` - Create Plaid Link token
-- `POST /api/v1/plaid/exchange-token` - Exchange public token
-- `GET /api/v1/plaid/accounts` - Get linked accounts
-- `GET /api/v1/plaid/transactions` - Get transactions
-- `GET /api/v1/finance/dashboard` - Finance dashboard data
-
 **Nutrition:**
 - `GET /api/v1/nutrition/meals` - Get user's meals
 - `POST /api/v1/nutrition/meals` - Log a meal
@@ -563,8 +547,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@samaanai.com","password":"password123"}'
 
-# Get dashboard (with JWT token)
-curl http://localhost:8080/api/v1/finance/dashboard \
+# Get tasks (with JWT token)
+curl http://localhost:8080/api/v1/todo/tasks \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -672,11 +656,6 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_CALLBACK_URL=http://localhost:8080/api/v1/auth/google/callback
 GOOGLE_SUCCESS_REDIRECT=http://localhost:19006
 
-# Plaid
-PLAID_CLIENT_ID=your-plaid-client-id
-PLAID_SECRET=your-plaid-secret
-PLAID_ENV=sandbox
-
 # Server
 PORT=8080
 NODE_ENV=development
@@ -697,8 +676,6 @@ Secrets are managed in GCP Secret Manager and injected at runtime:
 - `JWT_REFRESH_SECRET` - Refresh token secret
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth secret
-- `PLAID_CLIENT_ID` - Plaid API client ID
-- `PLAID_SECRET` - Plaid API secret
 
 ---
 
@@ -816,4 +793,4 @@ Krishna Yadamakanti
 - [Express.js](https://expressjs.com/)
 - [Prisma](https://www.prisma.io/)
 - [Google Cloud Run](https://cloud.google.com/run)
-- [Plaid API](https://plaid.com/docs/)
+- [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/)

@@ -289,8 +289,7 @@ Common endpoints:
 - `/api/v1/users/*` - User management
 - `/api/v1/todo/*` - Todo/tasks
 - `/api/v1/nutrition/*` - Nutrition tracking
-- `/api/v1/finance/*` - Finance tracking
-- `/api/v1/plaid/*` - Plaid integration
+- `/api/v1/integrations/*` - Microsoft To Do integration
 
 ---
 
@@ -303,8 +302,7 @@ Main application database containing:
 - User accounts and authentication
 - Todo/task management
 - Nutrition tracking data
-- Finance tracking data
-- Plaid integrations
+- Microsoft To Do integrations
 - Notification preferences
 
 **Schema managed by**: Prisma ORM

@@ -29,7 +29,6 @@
   - JWT tokens for API access
   - Microsoft OAuth 2.0 for To Do integration
 - **APIs & Integrations:**
-  - Plaid SDK (banking/finance data)
   - Microsoft Graph API (To Do tasks)
   - SendGrid (email notifications via SMTP)
 - **Validation:** Joi
@@ -47,7 +46,7 @@
 - **Engine:** PostgreSQL 15
 - **Development:** Local via Docker or Cloud SQL Proxy
 - **Production:** Google Cloud SQL (private IP only)
-- **ORM:** Prisma with code-first migrations
+- **ORM:** Prisma with code-first migrationsist
 
 ### DevOps & Cloud
 - **Platform:** Google Cloud Platform (GCP)
@@ -80,24 +79,7 @@
 - Database: `Meal`, `Exercise`, `NutritionGoal` tables
 - Mobile app: Dedicated screens for meal logging and reports
 
-### 2. Finance Management
-**Purpose:** Aggregate and track personal finances across multiple accounts
-
-**Features:**
-- **Plaid Integration:** Connect bank accounts, credit cards, investment accounts
-- Real-time transaction tracking and categorization
-- Net worth calculation and trending
-- Spending analytics by category
-- Multiple account support (checking, savings, credit cards)
-- Financial dashboard with key metrics
-
-**Technical Implementation:**
-- REST API endpoints: `/api/v1/finance/*`, `/api/v1/plaid/*`
-- Database: `PlaidItem`, `Account`, `Transaction` tables
-- Plaid Link token exchange for secure bank connections
-- Automatic transaction syncing
-
-### 3. Task Management
+### 2. Task Management
 **Purpose:** Organize personal tasks and todos
 
 **Features:**
@@ -112,7 +94,7 @@
 - Database: `Task` table with `microsoftTodoId` for sync
 - Mobile app: Task list screens with filters
 
-### 4. Microsoft To Do Integration
+### 3. Microsoft To Do Integration
 **Purpose:** Sync tasks between Samaanai and Microsoft To Do
 
 **Status:** Phase 1 Implementation Complete (deployed to staging)
@@ -136,7 +118,7 @@
 - Webhook support for real-time updates
 - Automatic background sync
 
-### 5. Authentication & Security
+### 4. Authentication & Security
 **Features:**
 - Email/password registration and login
 - Google OAuth integration (web + mobile deep linking)
@@ -205,7 +187,7 @@
 **Region:** us-west1 (Oregon)
 
 **Services:**
-- **Backend API:** `https://samaanai-backend-362270100637.us-west1.run.app`
+- **Backend API:** `https://samaanai-backend-172298808029.us-west1.run.app`
 - **Frontend:** `https://samaanai-frontend-172298808029.us-west1.run.app`
 
 **Database:**
@@ -457,11 +439,6 @@ eas build:download --platform android --latest
 - `auth_user` - User accounts (email, password, OAuth)
 - `auth_session` - JWT refresh tokens
 
-**Finance:**
-- `PlaidItem` - Connected bank/financial institutions
-- `Account` - Individual accounts (checking, savings, credit)
-- `Transaction` - Financial transactions
-
 **Nutrition:**
 - `Meal` - Logged meals with nutritional info
 - `Exercise` - Exercise activities
@@ -703,7 +680,6 @@ gcloud run services update samaanai-backend-staging \
 ### Completed Features
 - User authentication (email/password + Google OAuth)
 - Nutrition tracking (meals, exercises, goals)
-- Finance management (Plaid integration)
 - Task management (basic CRUD)
 - Microsoft To Do integration (Phase 1 - one-way sync)
 - Infrastructure migration to us-west1 with VPC networking
