@@ -64,7 +64,7 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 │  │   • Node.js 18+                                   │  │
 │  │   • Passport.js (Local + Google OAuth)            │  │
 │  │   • JWT Authentication                            │  │
-│  │   • Plaid SDK Integration                         │  │
+│  │   • Microsoft Graph API Integration               │  │
 │  └──────────────────────────────────────────────────┘  │
 └─────────────────┬───────────────────────────────────────┘
                   │ Prisma ORM
@@ -793,4 +793,4 @@ Krishna Yadamakanti
 - [Express.js](https://expressjs.com/)
 - [Prisma](https://www.prisma.io/)
 - [Google Cloud Run](https://cloud.google.com/run)
-- [Plaid API](https://plaid.com/docs/)
+- [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/)

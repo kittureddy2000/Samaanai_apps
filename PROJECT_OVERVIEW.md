@@ -29,7 +29,6 @@
   - JWT tokens for API access
   - Microsoft OAuth 2.0 for To Do integration
 - **APIs & Integrations:**
-  - Plaid SDK (banking/finance data)
   - Microsoft Graph API (To Do tasks)
   - SendGrid (email notifications via SMTP)
 - **Validation:** Joi

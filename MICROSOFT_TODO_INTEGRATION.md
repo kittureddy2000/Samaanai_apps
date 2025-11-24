@@ -731,16 +731,15 @@ env:
 ### NPM Packages to Install
 
 ```bash
-npm install @azure/msal-node axios
+npm install @azure/msal-node
 ```
 
 **Packages:**
 - `@azure/msal-node` - Microsoft Authentication Library for Node.js (OAuth2 flow)
-- `axios` - HTTP client for Microsoft Graph API calls (already installed via plaid dependency)
 
-**Why these packages:**
+**Why this package:**
 - `@azure/msal-node`: Official Microsoft library for OAuth2 authentication, handles token management
-- `axios`: Already in use for Plaid integration, will reuse for Microsoft Graph API
+- For HTTP requests to Microsoft Graph API, we can use Node.js native fetch or install axios if needed
 
 ---
 

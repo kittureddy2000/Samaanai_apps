@@ -775,11 +775,7 @@ export const errorHandler = (
 ### Week 3: Convert Nutrition Feature
 - [ ] Same steps as todo feature
 
-### Week 4: Convert Finance Feature
-- [ ] Same steps as todo feature
-- [ ] Convert `plaid.service.js` → `plaid.service.ts`
-
-### Week 5: Convert Auth Feature
+### Week 4: Convert Auth Feature
 - [ ] Same steps as todo feature
 
 ### Week 6: Convert Shared Code
