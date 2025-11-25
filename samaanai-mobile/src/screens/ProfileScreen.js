@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Text, Card, Title, Button, ActivityIndicator, List, Avatar, Divider, Portal, Dialog } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -50,6 +51,31 @@ export default function ProfileScreen({ navigation }) {
   const confirmLogout = () => {
     setLogoutDialogVisible(false);
     logout();
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { data } = await api.get('/integrations/google/connect');
+      if (data.url) {
+        await WebBrowser.openBrowserAsync(data.url);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to initiate Google connection');
+      console.error(err);
+    }
+  };
+
+  const handleSyncGoogle = async () => {
+    try {
+      setLoading(true);
+      const { data } = await api.post('/integrations/google/sync');
+      Alert.alert('Success', `Synced ${data.synced} tasks from Google`);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to sync Google Tasks');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -189,6 +215,27 @@ export default function ProfileScreen({ navigation }) {
           title="App Version"
           description="1.0.0"
           left={props => <List.Icon {...props} icon="information" />}
+        />
+      </Card>
+
+      {/* Integrations */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Title>Integrations</Title>
+        </Card.Content>
+        <Divider />
+        <List.Item
+          title="Google Tasks"
+          description="Sync your tasks from Google"
+          left={props => <List.Icon {...props} icon="google" />}
+          right={props => <Button mode="text" onPress={handleConnectGoogle}>Connect</Button>}
+        />
+        <Divider />
+        <List.Item
+          title="Sync Google Tasks"
+          description="Manually trigger a sync"
+          left={props => <List.Icon {...props} icon="sync" />}
+          onPress={handleSyncGoogle}
         />
       </Card>
 
