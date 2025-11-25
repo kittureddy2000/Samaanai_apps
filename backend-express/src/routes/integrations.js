@@ -7,6 +7,8 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const integrationController = require('../controllers/integrationController');
+const googleTasksService = require('../services/googleTasksService');
+const logger = require('../config/logger');
 
 // All routes require authentication except callback
 // (callback validates state parameter instead)
