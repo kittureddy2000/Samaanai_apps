@@ -7,9 +7,10 @@ validateEnv();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
+const pinoHttp = require('pino-http');
 const compression = require('compression');
 const passport = require('./config/passport');
+const logger = require('./config/logger');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -45,7 +46,7 @@ app.use(cors({
     // Check if origin is in allowlist
     if (allowedOrigins.length === 0) {
       // Development fallback: allow all origins but warn
-      console.warn('⚠️  ALLOWED_ORIGINS not set - allowing all origins in development mode');
+      logger.warn('⚠️  ALLOWED_ORIGINS not set - allowing all origins in development mode');
       return callback(null, origin);
     }
 
@@ -66,9 +67,7 @@ app.use(cors({
 app.use(compression());
 
 // Request logging
-if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined'));
-}
+app.use(pinoHttp({ logger }));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -129,7 +128,7 @@ app.use(errorHandler);
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
-  console.log('Received shutdown signal, closing server...');
+  logger.info('Received shutdown signal, closing server...');
   const { prisma } = require('./config/database');
   await prisma.$disconnect();
   process.exit(0);
@@ -141,9 +140,9 @@ process.on('SIGINT', gracefulShutdown);
 // Start server
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Samaanai API running on port ${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    logger.info(`🚀 Samaanai API running on port ${PORT}`);
+    logger.info(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
 
     // Initialize scheduled jobs
     const { initializeScheduler } = require('./services/schedulerService');
