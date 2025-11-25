@@ -190,6 +190,7 @@ export default function LoginScreen({ navigation }) {
           loading={googleLoading}
           disabled={loading || googleLoading}
           style={styles.googleButton}
+          textColor="#DB4437"
           icon="google"
         >
           Continue with Google
@@ -199,6 +200,7 @@ export default function LoginScreen({ navigation }) {
           mode="text"
           onPress={() => navigation.navigate('Register')}
           style={styles.linkButton}
+          textColor="#2E7D32"
         >
           Don't have an account? Sign up
         </Button>
@@ -234,7 +236,8 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
-    paddingVertical: 6
+    paddingVertical: 6,
+    backgroundColor: '#1976D2' // Blue
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -251,9 +254,13 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     paddingVertical: 6,
-    borderColor: '#4285F4'
+    borderColor: '#DB4437', // Red
+    borderWidth: 1,
   },
   linkButton: {
-    marginTop: 16
+    marginTop: 16,
+  },
+  linkText: {
+    color: '#2E7D32' // Green
   }
 });

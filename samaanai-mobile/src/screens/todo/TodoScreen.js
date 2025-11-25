@@ -24,6 +24,11 @@ export default function TodoScreen({ navigation }) {
   const [microsoftSyncing, setMicrosoftSyncing] = useState(false);
   const [showMicrosoftBanner, setShowMicrosoftBanner] = useState(true);
 
+  // Google Integration state
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleSyncing, setGoogleSyncing] = useState(false);
+  const [showGoogleBanner, setShowGoogleBanner] = useState(true);
+
   const fetchTasks = async () => {
     try {
       setError(null);
@@ -119,6 +124,53 @@ export default function TodoScreen({ navigation }) {
     }
   };
 
+  const checkGoogleStatus = async () => {
+    // We don't have a specific status endpoint yet, but we can infer from profile or add one.
+    // For now, let's assume if we can sync, we are connected.
+    // Or better, check if we have tokens.
+    // Since we didn't add a status endpoint, let's skip auto-check or try to sync lightly?
+    // Actually, let's add a simple check to the API or just rely on the user clicking connect.
+    // Wait, I can't easily check status without a new endpoint.
+    // I'll skip the status check for now and just show the banner if not dismissed.
+    // If user clicks connect, it opens OAuth.
+    // If user clicks sync, it tries to sync.
+    // Ideally I should add GET /integrations/google/status.
+    // But for now, let's just show the banner.
+    // Actually, I can use the profile endpoint if it returns integration status?
+    // No, profile doesn't return that.
+    // Let's just implement the handlers.
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { data } = await api.get('/integrations/google/connect');
+      if (data.url) {
+        await WebBrowser.openBrowserAsync(data.url);
+        setGoogleConnected(true); // Optimistic update
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to initiate Google connection');
+      console.error(err);
+    }
+  };
+
+  const handleSyncGoogle = async () => {
+    try {
+      setGoogleSyncing(true);
+      const { data } = await api.post('/integrations/google/sync');
+      Alert.alert('Success', `Synced ${data.synced} tasks from Google`);
+      setGoogleConnected(true);
+      await fetchAllData();
+    } catch (err) {
+      console.error('Sync Google error:', err);
+      // If 401/403, maybe not connected
+      Alert.alert('Sync Failed', 'Failed to sync Google Tasks. Please connect again.');
+      setGoogleConnected(false);
+    } finally {
+      setGoogleSyncing(false);
+    }
+  };
+
   // Client-side filtering and sorting using useMemo to prevent re-fetching
   const tasks = useMemo(() => {
     let filteredTasks = [...allTasks];
@@ -140,7 +192,7 @@ export default function TodoScreen({ navigation }) {
       const query = searchQuery.toLowerCase();
       filteredTasks = filteredTasks.filter(task => {
         return task.name.toLowerCase().includes(query) ||
-               (task.description && task.description.toLowerCase().includes(query));
+          (task.description && task.description.toLowerCase().includes(query));
       });
     }
 
@@ -240,6 +292,14 @@ export default function TodoScreen({ navigation }) {
                     style={styles.microsoftIcon}
                   />
                 )}
+                {task.googleTaskId && (
+                  <MaterialCommunityIcons
+                    name="google"
+                    size={14}
+                    color="#DB4437"
+                    style={styles.microsoftIcon}
+                  />
+                )}
                 {hasAttachment && (
                   <MaterialCommunityIcons
                     name="paperclip"
@@ -316,16 +376,16 @@ export default function TodoScreen({ navigation }) {
             },
             microsoftConnected
               ? {
-                  label: microsoftSyncing ? 'Syncing...' : 'Sync Now',
-                  onPress: handleSyncMicrosoft,
-                  disabled: microsoftSyncing,
-                  icon: microsoftSyncing ? 'sync' : 'cloud-sync',
-                }
+                label: microsoftSyncing ? 'Syncing...' : 'Sync Now',
+                onPress: handleSyncMicrosoft,
+                disabled: microsoftSyncing,
+                icon: microsoftSyncing ? 'sync' : 'cloud-sync',
+              }
               : {
-                  label: 'Connect',
-                  onPress: handleConnectMicrosoft,
-                  icon: 'link-variant',
-                },
+                label: 'Connect',
+                onPress: handleConnectMicrosoft,
+                icon: 'link-variant',
+              },
           ]}
           icon={microsoftConnected ? 'microsoft' : 'microsoft'}
           style={styles.microsoftBanner}
@@ -333,6 +393,37 @@ export default function TodoScreen({ navigation }) {
           {microsoftConnected
             ? 'Microsoft To Do connected. Tap Sync Now to import tasks.'
             : 'Connect Microsoft To Do to sync your tasks.'}
+        </Banner>
+      )}
+
+      {/* Google Tasks Integration Banner */}
+      {showGoogleBanner && (
+        <Banner
+          visible={true}
+          actions={[
+            {
+              label: 'Dismiss',
+              onPress: () => setShowGoogleBanner(false),
+            },
+            googleConnected
+              ? {
+                label: googleSyncing ? 'Syncing...' : 'Sync Now',
+                onPress: handleSyncGoogle,
+                disabled: googleSyncing,
+                icon: googleSyncing ? 'sync' : 'cloud-sync',
+              }
+              : {
+                label: 'Connect',
+                onPress: handleConnectGoogle,
+                icon: 'google',
+              },
+          ]}
+          icon="google"
+          style={[styles.microsoftBanner, { backgroundColor: '#e8f0fe' }]} // Light blue for Google
+        >
+          {googleConnected
+            ? 'Google Tasks connected. Tap Sync Now to import tasks.'
+            : 'Connect Google Tasks to sync your tasks.'}
         </Banner>
       )}
 
