@@ -10,14 +10,7 @@ import {
   addNotificationResponseListener
 } from './src/services/notificationService';
 
-const theme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: '#1976d2',
-    secondary: '#4caf50'
-  }
-};
+import { premiumTheme } from './src/theme/premiumTheme';
 
 export default function App() {
   const notificationListener = useRef();
@@ -61,7 +54,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <PaperProvider theme={theme}>
+        <PaperProvider theme={premiumTheme}>
           <AuthProvider>
             <AppNavigator />
             <StatusBar style="auto" />
