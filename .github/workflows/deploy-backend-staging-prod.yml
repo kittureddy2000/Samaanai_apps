@@ -197,7 +197,7 @@ jobs:
             MAX_INSTANCES=10
             MEMORY="512Mi"
             CPU=1
-            CLOUD_SQL_INSTANCE="n8n-postgres-instance"
+            CLOUD_SQL_INSTANCE="samaanai-backend-staging-db"
             MICROSOFT_REDIRECT_URI="https://samaanai-backend-staging-hdp6ioqupa-uw.a.run.app/api/v1/integrations/microsoft/callback"
           fi
 
@@ -273,7 +273,7 @@ jobs:
           if [[ "$ENV" == "production" ]]; then
             CLOUD_SQL_INSTANCE="samaanai-prod-postgres"
           else
-            CLOUD_SQL_INSTANCE="n8n-postgres-instance"
+            CLOUD_SQL_INSTANCE="samaanai-backend-staging-db"
           fi
 
           # Get Cloud SQL connection name
