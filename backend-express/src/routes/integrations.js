@@ -65,4 +65,66 @@ router.get('/microsoft/test',
   integrationController.testMicrosoftConnection
 );
 
+// Google Tasks Integration Routes
+
+// GET /api/v1/integrations/google/connect
+router.get('/google/connect',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const url = googleTasksService.getAuthUrl(req.user.id);
+      res.json({ url });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// GET /api/v1/integrations/google/callback
+router.get('/google/callback',
+  async (req, res, next) => {
+    try {
+      const { code, state } = req.query;
+      const result = await googleTasksService.handleCallback(code, state);
+
+      // Redirect to frontend with tokens
+      // Determine if mobile or web based on state or user agent?
+      // For now, assume web or handle mobile deep link
+      // The service returns tokens. We need to send them to the client.
+      // If this is a browser redirect, we should redirect to the app.
+
+      // For mobile: samaanai://google-auth?accessToken=...
+      // For web: /auth/google/callback?accessToken=...
+
+      // The state parameter contains userId.
+      // We might need to store the tokens in DB and just tell frontend "success".
+      // But the current auth flow seems to return tokens to client.
+
+      // Let's look at how Microsoft callback handles it.
+      // integrationController.handleMicrosoftCallback
+
+      // For now, let's just return JSON if it's an API call, but this is a callback.
+      // It needs to redirect.
+
+      const redirectUrl = process.env.FRONTEND_URL || 'https://samaanai-frontend-staging-hdp6ioqupa-uw.a.run.app';
+      res.redirect(`${redirectUrl}/profile?google_connected=true`);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/v1/integrations/google/sync
+router.post('/google/sync',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const result = await googleTasksService.syncTasks(req.user.id);
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 module.exports = router;
