@@ -55,7 +55,7 @@ export default function ProfileScreen({ navigation }) {
 
   const handleConnectGoogle = async () => {
     try {
-      const { data } = await api.get('/integrations/google/connect');
+      const { data } = await api.connectGoogle();
       if (data.url) {
         await WebBrowser.openBrowserAsync(data.url);
       }
@@ -68,7 +68,7 @@ export default function ProfileScreen({ navigation }) {
   const handleSyncGoogle = async () => {
     try {
       setLoading(true);
-      const { data } = await api.post('/integrations/google/sync');
+      const { data } = await api.syncGoogleTasks();
       Alert.alert('Success', `Synced ${data.synced} tasks from Google`);
     } catch (err) {
       Alert.alert('Error', 'Failed to sync Google Tasks');

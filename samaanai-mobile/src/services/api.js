@@ -215,7 +215,14 @@ export const api = {
     apiClient.post('/integrations/microsoft/sync'),
 
   disconnectMicrosoft: () =>
-    apiClient.delete('/integrations/microsoft/disconnect')
+    apiClient.delete('/integrations/microsoft/disconnect'),
+
+  // Google Tasks Integration
+  connectGoogle: () =>
+    apiClient.get('/integrations/google/connect'),
+
+  syncGoogleTasks: () =>
+    apiClient.post('/integrations/google/sync')
 };
 
 export default api;
