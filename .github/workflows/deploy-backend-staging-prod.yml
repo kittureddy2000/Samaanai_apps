@@ -288,7 +288,7 @@ jobs:
             --image $IMAGE \
             --region ${{ env.GCP_REGION }} \
             --set-secrets DATABASE_URL=DATABASE_URL:latest \
-            --add-cloudsql-instances $SQL_CONNECTION \
+            --set-cloudsql-instances $SQL_CONNECTION \
             --max-retries 3 \
             --task-timeout 5m \
             --execute-now \
