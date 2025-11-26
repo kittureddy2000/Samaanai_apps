@@ -11,6 +11,8 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const [disconnectMicrosoftDialogVisible, setDisconnectMicrosoftDialogVisible] = useState(false);
+  const [disconnectGoogleDialogVisible, setDisconnectGoogleDialogVisible] = useState(false);
 
   // Integration states
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
@@ -88,27 +90,43 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleDisconnectMicrosoft = async () => {
-    Alert.alert(
-      'Disconnect Microsoft To Do',
-      'Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.disconnectMicrosoft();
-              setMicrosoftConnected(false);
-              Alert.alert('Success', 'Microsoft To Do disconnected');
-            } catch (err) {
-              Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
-              console.error(err);
+    if (Platform.OS === 'web') {
+      setDisconnectMicrosoftDialogVisible(true);
+    } else {
+      Alert.alert(
+        'Disconnect Microsoft To Do',
+        'Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.disconnectMicrosoft();
+                setMicrosoftConnected(false);
+                Alert.alert('Success', 'Microsoft To Do disconnected');
+              } catch (err) {
+                Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
+                console.error(err);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmDisconnectMicrosoft = async () => {
+    setDisconnectMicrosoftDialogVisible(false);
+    try {
+      await api.disconnectMicrosoft();
+      setMicrosoftConnected(false);
+      Alert.alert('Success', 'Microsoft To Do disconnected');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
+      console.error(err);
+    }
   };
 
   const handleConnectGoogle = async () => {
@@ -126,27 +144,43 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleDisconnectGoogle = async () => {
-    Alert.alert(
-      'Disconnect Google Tasks',
-      'Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.disconnectGoogle();
-              setGoogleConnected(false);
-              Alert.alert('Success', 'Google Tasks disconnected');
-            } catch (err) {
-              Alert.alert('Error', 'Failed to disconnect Google Tasks');
-              console.error(err);
+    if (Platform.OS === 'web') {
+      setDisconnectGoogleDialogVisible(true);
+    } else {
+      Alert.alert(
+        'Disconnect Google Tasks',
+        'Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.disconnectGoogle();
+                setGoogleConnected(false);
+                Alert.alert('Success', 'Google Tasks disconnected');
+              } catch (err) {
+                Alert.alert('Error', 'Failed to disconnect Google Tasks');
+                console.error(err);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const confirmDisconnectGoogle = async () => {
+    setDisconnectGoogleDialogVisible(false);
+    try {
+      await api.disconnectGoogle();
+      setGoogleConnected(false);
+      Alert.alert('Success', 'Google Tasks disconnected');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to disconnect Google Tasks');
+      console.error(err);
+    }
   };
 
   if (loading) {
@@ -344,8 +378,9 @@ export default function ProfileScreen({ navigation }) {
 
       <View style={styles.spacer} />
 
-      {/* Logout Dialog for Web */}
+      {/* Dialogs for Web */}
       <Portal>
+        {/* Logout Dialog */}
         <Dialog visible={logoutDialogVisible} onDismiss={() => setLogoutDialogVisible(false)}>
           <Dialog.Title>Logout</Dialog.Title>
           <Dialog.Content>
@@ -354,6 +389,30 @@ export default function ProfileScreen({ navigation }) {
           <Dialog.Actions>
             <Button onPress={() => setLogoutDialogVisible(false)}>Cancel</Button>
             <Button onPress={confirmLogout} textColor="#d32f2f">Logout</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Disconnect Microsoft Dialog */}
+        <Dialog visible={disconnectMicrosoftDialogVisible} onDismiss={() => setDisconnectMicrosoftDialogVisible(false)}>
+          <Dialog.Title>Disconnect Microsoft To Do</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDisconnectMicrosoftDialogVisible(false)}>Cancel</Button>
+            <Button onPress={confirmDisconnectMicrosoft} textColor="#d32f2f">Disconnect</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Disconnect Google Dialog */}
+        <Dialog visible={disconnectGoogleDialogVisible} onDismiss={() => setDisconnectGoogleDialogVisible(false)}>
+          <Dialog.Title>Disconnect Google Tasks</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDisconnectGoogleDialogVisible(false)}>Cancel</Button>
+            <Button onPress={confirmDisconnectGoogle} textColor="#d32f2f">Disconnect</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
