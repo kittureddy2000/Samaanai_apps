@@ -12,6 +12,11 @@ export default function ProfileScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
 
+  // Integration states
+  const [microsoftConnected, setMicrosoftConnected] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [checkingIntegrations, setCheckingIntegrations] = useState(false);
+
   const fetchProfile = async () => {
     try {
       setError(null);
@@ -25,8 +30,25 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const checkIntegrationStatus = async () => {
+    try {
+      setCheckingIntegrations(true);
+      const [microsoftStatus, googleStatus] = await Promise.all([
+        api.getMicrosoftStatus().catch(() => ({ data: { connected: false } })),
+        api.getGoogleStatus().catch(() => ({ data: { connected: false } }))
+      ]);
+      setMicrosoftConnected(microsoftStatus.data.connected);
+      setGoogleConnected(googleStatus.data.connected);
+    } catch (err) {
+      console.error('Integration status error:', err);
+    } finally {
+      setCheckingIntegrations(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
+    checkIntegrationStatus();
   }, []);
 
   const handleLogout = () => {
@@ -53,29 +75,78 @@ export default function ProfileScreen({ navigation }) {
     logout();
   };
 
+  const handleConnectMicrosoft = async () => {
+    try {
+      const { data } = await api.connectMicrosoft();
+      await WebBrowser.openBrowserAsync(data.authorizationUrl);
+      // Refresh status after OAuth
+      setTimeout(() => checkIntegrationStatus(), 2000);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to connect Microsoft To Do');
+      console.error(err);
+    }
+  };
+
+  const handleDisconnectMicrosoft = async () => {
+    Alert.alert(
+      'Disconnect Microsoft To Do',
+      'Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.disconnectMicrosoft();
+              setMicrosoftConnected(false);
+              Alert.alert('Success', 'Microsoft To Do disconnected');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
+              console.error(err);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleConnectGoogle = async () => {
     try {
       const { data } = await api.connectGoogle();
       if (data.url) {
         await WebBrowser.openBrowserAsync(data.url);
+        // Refresh status after OAuth
+        setTimeout(() => checkIntegrationStatus(), 2000);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to initiate Google connection');
+      Alert.alert('Error', 'Failed to connect Google Tasks');
       console.error(err);
     }
   };
 
-  const handleSyncGoogle = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.syncGoogleTasks();
-      Alert.alert('Success', `Synced ${data.synced} tasks from Google`);
-    } catch (err) {
-      Alert.alert('Error', 'Failed to sync Google Tasks');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDisconnectGoogle = async () => {
+    Alert.alert(
+      'Disconnect Google Tasks',
+      'Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.disconnectGoogle();
+              setGoogleConnected(false);
+              Alert.alert('Success', 'Google Tasks disconnected');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to disconnect Google Tasks');
+              console.error(err);
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (loading) {
@@ -175,6 +246,44 @@ export default function ProfileScreen({ navigation }) {
         />
       </Card>
 
+      {/* Integrations */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Title>Integrations</Title>
+          <Text style={styles.sectionDescription}>Connect external apps to sync your tasks</Text>
+        </Card.Content>
+        <Divider />
+        <List.Item
+          title="Microsoft To Do"
+          description={microsoftConnected ? 'Connected' : 'Not connected'}
+          left={props => <List.Icon {...props} icon="microsoft" color="#00A4EF" />}
+          right={props => (
+            <Button
+              mode={microsoftConnected ? 'outlined' : 'contained'}
+              onPress={microsoftConnected ? handleDisconnectMicrosoft : handleConnectMicrosoft}
+              compact
+            >
+              {microsoftConnected ? 'Disconnect' : 'Connect'}
+            </Button>
+          )}
+        />
+        <Divider />
+        <List.Item
+          title="Google Tasks"
+          description={googleConnected ? 'Connected' : 'Not connected'}
+          left={props => <List.Icon {...props} icon="google" color="#DB4437" />}
+          right={props => (
+            <Button
+              mode={googleConnected ? 'outlined' : 'contained'}
+              onPress={googleConnected ? handleDisconnectGoogle : handleConnectGoogle}
+              compact
+            >
+              {googleConnected ? 'Disconnect' : 'Connect'}
+            </Button>
+          )}
+        />
+      </Card>
+
       {/* App Info */}
       <Card style={styles.card}>
         <Card.Content>
@@ -215,27 +324,6 @@ export default function ProfileScreen({ navigation }) {
           title="App Version"
           description="1.0.0"
           left={props => <List.Icon {...props} icon="information" />}
-        />
-      </Card>
-
-      {/* Integrations */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Integrations</Title>
-        </Card.Content>
-        <Divider />
-        <List.Item
-          title="Google Tasks"
-          description="Sync your tasks from Google"
-          left={props => <List.Icon {...props} icon="google" />}
-          right={props => <Button mode="text" onPress={handleConnectGoogle}>Connect</Button>}
-        />
-        <Divider />
-        <List.Item
-          title="Sync Google Tasks"
-          description="Manually trigger a sync"
-          left={props => <List.Icon {...props} icon="sync" />}
-          onPress={handleSyncGoogle}
         />
       </Card>
 
@@ -323,6 +411,11 @@ const styles = StyleSheet.create({
   memberSince: {
     fontSize: 14,
     color: '#999'
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4
   },
   card: {
     margin: 16,

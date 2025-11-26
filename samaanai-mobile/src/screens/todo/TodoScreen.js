@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
-import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner, Searchbar } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Searchbar, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
@@ -22,12 +22,10 @@ export default function TodoScreen({ navigation }) {
   // Microsoft Integration state
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [microsoftSyncing, setMicrosoftSyncing] = useState(false);
-  const [showMicrosoftBanner, setShowMicrosoftBanner] = useState(true);
 
   // Google Integration state
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleSyncing, setGoogleSyncing] = useState(false);
-  const [showGoogleBanner, setShowGoogleBanner] = useState(true);
 
   const fetchTasks = async () => {
     try {
@@ -125,20 +123,12 @@ export default function TodoScreen({ navigation }) {
   };
 
   const checkGoogleStatus = async () => {
-    // We don't have a specific status endpoint yet, but we can infer from profile or add one.
-    // For now, let's assume if we can sync, we are connected.
-    // Or better, check if we have tokens.
-    // Since we didn't add a status endpoint, let's skip auto-check or try to sync lightly?
-    // Actually, let's add a simple check to the API or just rely on the user clicking connect.
-    // Wait, I can't easily check status without a new endpoint.
-    // I'll skip the status check for now and just show the banner if not dismissed.
-    // If user clicks connect, it opens OAuth.
-    // If user clicks sync, it tries to sync.
-    // Ideally I should add GET /integrations/google/status.
-    // But for now, let's just show the banner.
-    // Actually, I can use the profile endpoint if it returns integration status?
-    // No, profile doesn't return that.
-    // Let's just implement the handlers.
+    try {
+      const { data } = await api.getGoogleStatus();
+      setGoogleConnected(data.connected);
+    } catch (err) {
+      console.error('Google status error:', err);
+    }
   };
 
   const handleConnectGoogle = async () => {
@@ -202,7 +192,7 @@ export default function TodoScreen({ navigation }) {
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus()]);
+    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus(), checkGoogleStatus()]);
     setLoading(false);
     setRefreshing(false);
   };
@@ -365,68 +355,6 @@ export default function TodoScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Microsoft Integration Banner */}
-      {showMicrosoftBanner && (
-        <Banner
-          visible={true}
-          actions={[
-            {
-              label: 'Dismiss',
-              onPress: () => setShowMicrosoftBanner(false),
-            },
-            microsoftConnected
-              ? {
-                label: microsoftSyncing ? 'Syncing...' : 'Sync Now',
-                onPress: handleSyncMicrosoft,
-                disabled: microsoftSyncing,
-                icon: microsoftSyncing ? 'sync' : 'cloud-sync',
-              }
-              : {
-                label: 'Connect',
-                onPress: handleConnectMicrosoft,
-                icon: 'link-variant',
-              },
-          ]}
-          icon={microsoftConnected ? 'microsoft' : 'microsoft'}
-          style={styles.microsoftBanner}
-        >
-          {microsoftConnected
-            ? 'Microsoft To Do connected. Tap Sync Now to import tasks.'
-            : 'Connect Microsoft To Do to sync your tasks.'}
-        </Banner>
-      )}
-
-      {/* Google Tasks Integration Banner */}
-      {showGoogleBanner && (
-        <Banner
-          visible={true}
-          actions={[
-            {
-              label: 'Dismiss',
-              onPress: () => setShowGoogleBanner(false),
-            },
-            googleConnected
-              ? {
-                label: googleSyncing ? 'Syncing...' : 'Sync Now',
-                onPress: handleSyncGoogle,
-                disabled: googleSyncing,
-                icon: googleSyncing ? 'sync' : 'cloud-sync',
-              }
-              : {
-                label: 'Connect',
-                onPress: handleConnectGoogle,
-                icon: 'google',
-              },
-          ]}
-          icon="google"
-          style={[styles.microsoftBanner, { backgroundColor: '#e8f0fe' }]} // Light blue for Google
-        >
-          {googleConnected
-            ? 'Google Tasks connected. Tap Sync Now to import tasks.'
-            : 'Connect Google Tasks to sync your tasks.'}
-        </Banner>
-      )}
-
       {/* Stats Card */}
       {stats && (
         <Card style={styles.statsCard}>
@@ -434,6 +362,33 @@ export default function TodoScreen({ navigation }) {
             <View style={styles.statsHeader}>
               <Text style={styles.statsTitle}>Tasks Overview</Text>
               <View style={styles.headerActions}>
+                {/* Integration Sync Buttons */}
+                {microsoftConnected && (
+                  <TouchableOpacity
+                    onPress={handleSyncMicrosoft}
+                    disabled={microsoftSyncing}
+                    style={styles.syncIconButton}
+                  >
+                    <MaterialCommunityIcons
+                      name={microsoftSyncing ? "sync" : "microsoft"}
+                      size={20}
+                      color={microsoftSyncing ? "#999" : "#00A4EF"}
+                    />
+                  </TouchableOpacity>
+                )}
+                {googleConnected && (
+                  <TouchableOpacity
+                    onPress={handleSyncGoogle}
+                    disabled={googleSyncing}
+                    style={styles.syncIconButton}
+                  >
+                    <MaterialCommunityIcons
+                      name={googleSyncing ? "sync" : "google"}
+                      size={20}
+                      color={googleSyncing ? "#999" : "#DB4437"}
+                    />
+                  </TouchableOpacity>
+                )}
                 <Searchbar
                   placeholder="Search tasks..."
                   onChangeText={setSearchQuery}
@@ -611,6 +566,12 @@ const styles = StyleSheet.create({
     minHeight: 0,
     paddingVertical: 0
   },
+  syncIconButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    marginRight: 8
+  },
   sortIconButton: {
     padding: 6,
     borderRadius: 20,
@@ -756,9 +717,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 80
-  },
-  microsoftBanner: {
-    backgroundColor: '#e3f2fd',
-    marginBottom: 0
   }
 });

@@ -114,6 +114,73 @@ router.get('/google/callback',
   }
 );
 
+// GET /api/v1/integrations/google/status
+// Get connection status
+router.get('/google/status',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      const integration = await prisma.integration.findUnique({
+        where: {
+          userId_provider: {
+            userId: req.user.id,
+            provider: 'google_tasks'
+          }
+        }
+      });
+
+      await prisma.$disconnect();
+
+      if (!integration) {
+        return res.json({ connected: false });
+      }
+
+      res.json({
+        connected: true,
+        connectedAt: integration.createdAt,
+        lastSyncAt: integration.updatedAt
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// DELETE /api/v1/integrations/google/disconnect
+// Disconnect Google Tasks integration
+router.delete('/google/disconnect',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prisma = new PrismaClient();
+
+      await prisma.integration.delete({
+        where: {
+          userId_provider: {
+            userId: req.user.id,
+            provider: 'google_tasks'
+          }
+        }
+      });
+
+      await prisma.$disconnect();
+
+      logger.info(`Google Tasks disconnected for user ${req.user.id}`);
+      res.json({ success: true, message: 'Google Tasks disconnected successfully' });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        // Record not found
+        return res.status(404).json({ error: 'Google Tasks integration not found' });
+      }
+      next(error);
+    }
+  }
+);
+
 // POST /api/v1/integrations/google/sync
 router.post('/google/sync',
   authenticate,

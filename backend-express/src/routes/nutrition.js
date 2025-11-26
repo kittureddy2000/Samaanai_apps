@@ -67,6 +67,7 @@ router.delete('/exercises/:id', param('id').isUUID(), nutritionController.delete
 
 router.get('/weight', nutritionController.getWeightEntries);
 router.post('/weight', weightValidation, nutritionController.createWeightEntry);
+router.get('/weight/history', nutritionController.getWeightHistory);
 
 router.get('/reports/daily', nutritionController.getDailyReport);
 router.get('/reports/weekly', nutritionController.getWeeklyReport);
