@@ -296,6 +296,14 @@ export default function NutritionScreen({ navigation }) {
             </Button>
             <Button
               mode="outlined"
+              onPress={() => navigation.navigate('WeightTracking')}
+              style={styles.actionButton}
+              icon="scale-bathroom"
+            >
+              Weight Tracking
+            </Button>
+            <Button
+              mode="outlined"
               onPress={() => navigation.navigate('MonthlyReport')}
               style={styles.actionButton}
               icon="calendar-month"

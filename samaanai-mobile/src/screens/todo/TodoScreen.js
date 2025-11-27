@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
-import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Banner, Searchbar } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Searchbar, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
@@ -22,7 +22,10 @@ export default function TodoScreen({ navigation }) {
   // Microsoft Integration state
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
   const [microsoftSyncing, setMicrosoftSyncing] = useState(false);
-  const [showMicrosoftBanner, setShowMicrosoftBanner] = useState(true);
+
+  // Google Integration state
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [googleSyncing, setGoogleSyncing] = useState(false);
 
   const fetchTasks = async () => {
     try {
@@ -119,6 +122,45 @@ export default function TodoScreen({ navigation }) {
     }
   };
 
+  const checkGoogleStatus = async () => {
+    try {
+      const { data } = await api.getGoogleStatus();
+      setGoogleConnected(data.connected);
+    } catch (err) {
+      console.error('Google status error:', err);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { data } = await api.connectGoogle();
+      if (data.url) {
+        await WebBrowser.openBrowserAsync(data.url);
+        setGoogleConnected(true); // Optimistic update
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to initiate Google connection');
+      console.error(err);
+    }
+  };
+
+  const handleSyncGoogle = async () => {
+    try {
+      setGoogleSyncing(true);
+      const { data } = await api.syncGoogleTasks();
+      Alert.alert('Success', `Synced ${data.synced} tasks from Google`);
+      setGoogleConnected(true);
+      await fetchAllData();
+    } catch (err) {
+      console.error('Sync Google error:', err);
+      // If 401/403, maybe not connected
+      Alert.alert('Sync Failed', 'Failed to sync Google Tasks. Please connect again.');
+      setGoogleConnected(false);
+    } finally {
+      setGoogleSyncing(false);
+    }
+  };
+
   // Client-side filtering and sorting using useMemo to prevent re-fetching
   const tasks = useMemo(() => {
     let filteredTasks = [...allTasks];
@@ -140,7 +182,7 @@ export default function TodoScreen({ navigation }) {
       const query = searchQuery.toLowerCase();
       filteredTasks = filteredTasks.filter(task => {
         return task.name.toLowerCase().includes(query) ||
-               (task.description && task.description.toLowerCase().includes(query));
+          (task.description && task.description.toLowerCase().includes(query));
       });
     }
 
@@ -150,7 +192,7 @@ export default function TodoScreen({ navigation }) {
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus()]);
+    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus(), checkGoogleStatus()]);
     setLoading(false);
     setRefreshing(false);
   };
@@ -240,6 +282,14 @@ export default function TodoScreen({ navigation }) {
                     style={styles.microsoftIcon}
                   />
                 )}
+                {task.googleTaskId && (
+                  <MaterialCommunityIcons
+                    name="google"
+                    size={14}
+                    color="#DB4437"
+                    style={styles.microsoftIcon}
+                  />
+                )}
                 {hasAttachment && (
                   <MaterialCommunityIcons
                     name="paperclip"
@@ -305,37 +355,6 @@ export default function TodoScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Microsoft Integration Banner */}
-      {showMicrosoftBanner && (
-        <Banner
-          visible={true}
-          actions={[
-            {
-              label: 'Dismiss',
-              onPress: () => setShowMicrosoftBanner(false),
-            },
-            microsoftConnected
-              ? {
-                  label: microsoftSyncing ? 'Syncing...' : 'Sync Now',
-                  onPress: handleSyncMicrosoft,
-                  disabled: microsoftSyncing,
-                  icon: microsoftSyncing ? 'sync' : 'cloud-sync',
-                }
-              : {
-                  label: 'Connect',
-                  onPress: handleConnectMicrosoft,
-                  icon: 'link-variant',
-                },
-          ]}
-          icon={microsoftConnected ? 'microsoft' : 'microsoft'}
-          style={styles.microsoftBanner}
-        >
-          {microsoftConnected
-            ? 'Microsoft To Do connected. Tap Sync Now to import tasks.'
-            : 'Connect Microsoft To Do to sync your tasks.'}
-        </Banner>
-      )}
-
       {/* Stats Card */}
       {stats && (
         <Card style={styles.statsCard}>
@@ -343,6 +362,33 @@ export default function TodoScreen({ navigation }) {
             <View style={styles.statsHeader}>
               <Text style={styles.statsTitle}>Tasks Overview</Text>
               <View style={styles.headerActions}>
+                {/* Integration Sync Buttons */}
+                {microsoftConnected && (
+                  <TouchableOpacity
+                    onPress={handleSyncMicrosoft}
+                    disabled={microsoftSyncing}
+                    style={styles.syncIconButton}
+                  >
+                    <MaterialCommunityIcons
+                      name={microsoftSyncing ? "sync" : "microsoft"}
+                      size={20}
+                      color={microsoftSyncing ? "#999" : "#00A4EF"}
+                    />
+                  </TouchableOpacity>
+                )}
+                {googleConnected && (
+                  <TouchableOpacity
+                    onPress={handleSyncGoogle}
+                    disabled={googleSyncing}
+                    style={styles.syncIconButton}
+                  >
+                    <MaterialCommunityIcons
+                      name={googleSyncing ? "sync" : "google"}
+                      size={20}
+                      color={googleSyncing ? "#999" : "#DB4437"}
+                    />
+                  </TouchableOpacity>
+                )}
                 <Searchbar
                   placeholder="Search tasks..."
                   onChangeText={setSearchQuery}
@@ -520,6 +566,12 @@ const styles = StyleSheet.create({
     minHeight: 0,
     paddingVertical: 0
   },
+  syncIconButton: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    marginRight: 8
+  },
   sortIconButton: {
     padding: 6,
     borderRadius: 20,
@@ -665,9 +717,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 80
-  },
-  microsoftBanner: {
-    backgroundColor: '#e3f2fd',
-    marginBottom: 0
   }
 });

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
-import { Card, Title, Text, ActivityIndicator, useTheme } from 'react-native-paper';
+import { View, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, Dimensions } from 'react-native';
+import { Card, Text, ActivityIndicator, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../services/api';
 import { format, subDays, addDays, getDay } from 'date-fns';
+
+const { width } = Dimensions.get('window');
 
 const getStartOfWeek = (date, startOfWeek = 2) => {
   const jsDayOfWeek = getDay(date);
@@ -142,7 +145,7 @@ export default function DashboardScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
@@ -150,88 +153,107 @@ export default function DashboardScreen({ navigation }) {
   const chartData = prepareChartData();
   const weeklyStats = calculateWeeklyStats();
 
-  return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <Title style={styles.headerTitle}>Dashboard</Title>
-        <Text style={styles.headerSubtitle}>
-          {format(new Date(), 'EEEE, MMMM d, yyyy')}
-        </Text>
-      </View>
-
-      {/* Nutrition Summary */}
-      <Card style={styles.card} onPress={() => navigation.navigate('Nutrition')}>
-        <Card.Content>
-          <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="food-apple" size={24} color="#4caf50" />
-            <Title style={styles.cardTitle}>Today's Calories</Title>
+  // Glassmorphism Card Component
+  const GlassCard = ({ children, style, onPress }) => (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+      <View style={[styles.glassCardContainer, style]}>
+        <LinearGradient
+          colors={theme.colors.gradients.card}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.glassCardGradient}
+        >
+          <View style={styles.glassCardContent}>
+            {children}
           </View>
+        </LinearGradient>
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.background]}
+        style={styles.backgroundGradient}
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+        }
+      >
+        <View style={styles.header}>
+          <Text variant="headlineMedium" style={styles.headerTitle}>Dashboard</Text>
+          <Text variant="titleMedium" style={styles.headerSubtitle}>
+            {format(new Date(), 'EEEE, MMMM d')}
+          </Text>
+        </View>
+
+        {/* Nutrition Summary */}
+        <GlassCard style={styles.card} onPress={() => navigation.navigate('Nutrition')}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: '#E8F5E9' }]}>
+              <MaterialCommunityIcons name="food-apple" size={24} color="#2E7D32" />
+            </View>
+            <Text variant="titleLarge" style={styles.cardTitle}>Nutrition</Text>
+          </View>
+
           {nutritionData?.summary ? (
             <>
               <View style={styles.splitContainer}>
                 {/* Today's Data - Left Half */}
                 <View style={styles.leftHalf}>
-                  <View style={styles.calorieBar}>
-                    <Text style={styles.bigNumber}>
+                  <Text variant="labelLarge" style={styles.sectionLabel}>TODAY</Text>
+                  <View style={styles.calorieContainer}>
+                    <Text variant="displayMedium" style={[styles.bigNumber, { color: theme.colors.primary }]}>
                       {nutritionData.summary.caloriesConsumed || 0}
                     </Text>
-                    <Text style={styles.bigNumberLabel}>/ {nutritionData.summary.dailyGoal || 2000}</Text>
+                    <Text variant="bodyMedium" style={styles.goalLabel}>
+                      / {nutritionData.summary.dailyGoal || 2000} kcal
+                    </Text>
                   </View>
-                  <View style={styles.progressBar}>
-                    <View
+
+                  <View style={styles.progressBarBg}>
+                    <LinearGradient
+                      colors={theme.colors.gradients.primary}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
                       style={[
                         styles.progressFill,
-                        {
-                          width: `${Math.min(nutritionData.summary.percentOfGoal || 0, 100)}%`,
-                          backgroundColor: (nutritionData.summary.percentOfGoal || 0) > 100 ? theme.colors.error : '#4caf50'
-                        }
+                        { width: `${Math.min(nutritionData.summary.percentOfGoal || 0, 100)}%` }
                       ]}
                     />
                   </View>
-                  <Text style={styles.subInfo}>
+                  <Text variant="bodySmall" style={styles.subInfo}>
                     {nutritionData.meals?.length || 0} meals logged
                   </Text>
                 </View>
 
                 {/* Weekly Progress - Right Half */}
                 <View style={styles.rightHalf}>
+                  <Text variant="labelLarge" style={styles.sectionLabel}>THIS WEEK</Text>
                   {weeklyData ? (
-                    <>
-                      <Text style={styles.weekLabel}>This Week</Text>
-                      <View style={styles.weeklyStats}>
-                        <View style={styles.weekStatItem}>
-                          <Text style={styles.weekStatValue}>
-                            {weeklyStats.daysLogged}/7
-                          </Text>
-                          <Text style={styles.weekStatLabel}>Days</Text>
-                        </View>
-                        <View style={styles.weekStatItem}>
-                          <Text style={[
-                            styles.weekStatValue,
-                            { color: weeklyStats.totalNetCalories < 0 ? '#f44336' : weeklyStats.totalNetCalories > 0 ? '#4caf50' : '#ff9800' }
-                          ]}>
-                            {weeklyStats.totalNetCalories > 0 ? '+' : ''}{Math.round(weeklyStats.totalNetCalories)}
-                          </Text>
-                          <Text style={styles.weekStatLabel}>Net Cal</Text>
-                        </View>
+                    <View style={styles.weeklyStatsContainer}>
+                      <View style={styles.weekStatRow}>
+                        <Text variant="headlineSmall" style={styles.weekStatValue}>
+                          {weeklyStats.daysLogged}<Text variant="bodySmall" style={styles.weekStatTotal}>/7</Text>
+                        </Text>
+                        <Text variant="bodySmall" style={styles.weekStatLabel}>Days Active</Text>
                       </View>
-                      <View style={styles.weekProgressBar}>
-                        <View
-                          style={[
-                            styles.weekProgressFill,
-                            {
-                              width: `${(weeklyStats.daysLogged / 7) * 100}%`,
-                              backgroundColor: '#ff9800'
-                            }
-                          ]}
-                        />
+
+                      <View style={styles.weekStatRow}>
+                        <Text variant="headlineSmall" style={[
+                          styles.weekStatValue,
+                          { color: weeklyStats.totalNetCalories < 0 ? theme.colors.error : theme.colors.tertiary }
+                        ]}>
+                          {weeklyStats.totalNetCalories > 0 ? '+' : ''}{Math.round(weeklyStats.totalNetCalories)}
+                        </Text>
+                        <Text variant="bodySmall" style={styles.weekStatLabel}>Net Calories</Text>
                       </View>
-                    </>
+                    </View>
                   ) : (
                     <Text style={styles.noDataText}>No weekly data</Text>
                   )}
@@ -243,12 +265,12 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.weeklyChartSection}>
                   <View style={styles.weekNavigationHeader}>
                     <TouchableOpacity onPress={handlePreviousWeek} style={styles.weekNavButton}>
-                      <MaterialCommunityIcons name="chevron-left" size={24} color="#666" />
+                      <MaterialCommunityIcons name="chevron-left" size={24} color={theme.colors.onSurfaceVariant} />
                     </TouchableOpacity>
                     <View style={styles.weekTitleContainer}>
-                      <Text style={styles.weeklyChartTitle}>Weekly Overview</Text>
-                      <Text style={styles.weekDateRange}>
-                        {format(selectedWeekStart, 'MMM d')} - {format(addDays(selectedWeekStart, 6), 'MMM d, yyyy')}
+                      <Text variant="titleSmall" style={styles.weeklyChartTitle}>Weekly Overview</Text>
+                      <Text variant="bodySmall" style={styles.weekDateRange}>
+                        {format(selectedWeekStart, 'MMM d')} - {format(addDays(selectedWeekStart, 6), 'MMM d')}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -259,359 +281,340 @@ export default function DashboardScreen({ navigation }) {
                       <MaterialCommunityIcons
                         name="chevron-right"
                         size={24}
-                        color={isCurrentWeek() ? '#ccc' : '#666'}
+                        color={isCurrentWeek() ? theme.colors.surfaceVariant : theme.colors.onSurfaceVariant}
                       />
                     </TouchableOpacity>
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.groupedBarChart}>
-                      <View style={styles.chartContainer}>
-                        <View style={styles.barsContainer}>
-                          {chartData.labels.map((label, index) => {
-                            const consumed = chartData.consumedData[index];
-                            const net = chartData.netData[index];
-                            const absNet = Math.abs(net);
 
-                            // Calculate max value using absolute values for proper scaling
-                            const allAbsValues = chartData.netData.map(n => Math.abs(n));
-                            const maxValue = Math.max(...chartData.consumedData, ...allAbsValues, 1);
-                            const consumedHeight = (consumed / maxValue) * 100;
-                            const netHeight = (absNet / maxValue) * 100;
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chartScrollContent}>
+                    <View style={styles.barsContainer}>
+                      {chartData.labels.map((label, index) => {
+                        const consumed = chartData.consumedData[index];
+                        const net = chartData.netData[index];
+                        const absNet = Math.abs(net);
 
-                            // Determine net bar color: red if negative (over goal/surplus), green if positive (under goal/deficit)
-                            const netBarColor = net < 0 ? '#f44336' : net > 0 ? '#4caf50' : '#999';
+                        // Calculate max value using absolute values for proper scaling
+                        const allAbsValues = chartData.netData.map(n => Math.abs(n));
+                        const maxValue = Math.max(...chartData.consumedData, ...allAbsValues, 1);
+                        const consumedHeight = Math.max((consumed / maxValue) * 100, 4); // Min height 4
+                        const netHeight = Math.max((absNet / maxValue) * 100, 4); // Min height 4
 
-                            return (
-                              <View key={index} style={styles.barGroup}>
-                                <View style={styles.barPair}>
-                                  <View style={styles.barWrapper}>
-                                    <View style={[styles.bar, styles.consumedBar, { height: consumedHeight }]} />
-                                    <Text style={styles.barValue}>{formatCalories(consumed)}</Text>
-                                  </View>
-                                  <View style={styles.barWrapper}>
-                                    <View style={[styles.bar, { backgroundColor: netBarColor, height: netHeight }]} />
-                                    <Text style={styles.barValue}>{formatCalories(absNet)}</Text>
-                                  </View>
-                                </View>
-                                <Text style={styles.barLabel}>{label}</Text>
+                        // Determine net bar color
+                        const netBarColor = net < 0 ? theme.colors.error : theme.colors.tertiary;
+
+                        return (
+                          <View key={index} style={styles.barGroup}>
+                            <View style={styles.barPair}>
+                              <View style={styles.barWrapper}>
+                                <View style={[styles.bar, { height: `${consumedHeight}%`, backgroundColor: theme.colors.primary }]} />
                               </View>
-                            );
-                          })}
-                        </View>
-                      </View>
+                              <View style={styles.barWrapper}>
+                                <View style={[styles.bar, { height: `${netHeight}%`, backgroundColor: netBarColor }]} />
+                              </View>
+                            </View>
+                            <Text style={styles.barLabel}>{label}</Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   </ScrollView>
-                  <View style={styles.legend}>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: '#2196F3' }]} />
-                      <Text style={styles.legendText}>Consumed</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: '#f44336' }]} />
-                      <Text style={styles.legendText}>Over Goal</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: '#4caf50' }]} />
-                      <Text style={styles.legendText}>Under Goal</Text>
-                    </View>
-                  </View>
                 </View>
               )}
             </>
           ) : (
-            <Text>No nutrition data for today. Start logging your meals!</Text>
+            <View style={styles.emptyState}>
+              <Text variant="bodyMedium" style={styles.emptyStateText}>No nutrition data for today.</Text>
+              <Text variant="labelLarge" style={{ color: theme.colors.primary }}>Start logging your meals!</Text>
+            </View>
           )}
-        </Card.Content>
-      </Card>
+        </GlassCard>
 
-      {/* Todo Summary */}
-      <Card style={styles.card} onPress={() => navigation.navigate('Todo')}>
-        <Card.Content>
+        {/* Todo Summary */}
+        <GlassCard style={styles.card} onPress={() => navigation.navigate('Todo')}>
           <View style={styles.cardHeader}>
-            <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#ff9800" />
-            <Title style={styles.cardTitle}>Tasks</Title>
+            <View style={[styles.iconContainer, { backgroundColor: '#FFF3E0' }]}>
+              <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={24} color="#EF6C00" />
+            </View>
+            <Text variant="titleLarge" style={styles.cardTitle}>Tasks</Text>
           </View>
+
           {todoData?.stats ? (
             <>
               <View style={styles.todoStats}>
                 <View style={styles.todoStatBox}>
-                  <Text style={[styles.bigNumber, { fontSize: 28 }]}>
+                  <Text variant="displaySmall" style={[styles.todoStatNumber, { color: theme.colors.onSurface }]}>
                     {todoData.stats.pending || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Pending</Text>
+                  <Text variant="labelSmall" style={styles.statLabel}>Pending</Text>
                 </View>
+                <View style={styles.divider} />
                 <View style={styles.todoStatBox}>
-                  <Text style={[styles.bigNumber, { fontSize: 28, color: '#4caf50' }]}>
+                  <Text variant="displaySmall" style={[styles.todoStatNumber, { color: theme.colors.tertiary }]}>
                     {todoData.stats.completed || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Completed</Text>
+                  <Text variant="labelSmall" style={styles.statLabel}>Completed</Text>
                 </View>
+                <View style={styles.divider} />
                 <View style={styles.todoStatBox}>
-                  <Text style={[styles.bigNumber, { fontSize: 28, color: '#d32f2f' }]}>
+                  <Text variant="displaySmall" style={[styles.todoStatNumber, { color: theme.colors.error }]}>
                     {todoData.stats.overdue || 0}
                   </Text>
-                  <Text style={styles.statLabel}>Overdue</Text>
+                  <Text variant="labelSmall" style={styles.statLabel}>Overdue</Text>
                 </View>
               </View>
-              <Text style={styles.subInfo}>
-                {todoData.stats.total || 0} total tasks
-              </Text>
+              <View style={styles.todoFooter}>
+                <Text variant="bodySmall" style={styles.subInfo}>
+                  {todoData.stats.total || 0} total tasks
+                </Text>
+                <MaterialCommunityIcons name="arrow-right" size={16} color={theme.colors.outline} />
+              </View>
             </>
           ) : (
-            <Text>No tasks found. Create your first task to get started!</Text>
+            <View style={styles.emptyState}>
+              <Text variant="bodyMedium" style={styles.emptyStateText}>No tasks found.</Text>
+              <Text variant="labelLarge" style={{ color: theme.colors.primary }}>Create your first task!</Text>
+            </View>
           )}
-        </Card.Content>
-      </Card>
-    </ScrollView>
+        </GlassCard>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#F5F7FA',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 300,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: '#F5F7FA',
   },
   header: {
     padding: 24,
-    paddingTop: 40
+    paddingTop: 60,
+    paddingBottom: 32,
   },
   headerTitle: {
-    color: '#fff',
-    fontSize: 28,
-    marginBottom: 4
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
   headerSubtitle: {
-    color: '#fff',
-    opacity: 0.9,
-    fontSize: 14
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  card: {
-    margin: 16,
-    marginBottom: 8,
-    elevation: 2
+  glassCardContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  glassCardGradient: {
+    padding: 20,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 20,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   cardTitle: {
-    marginLeft: 8,
-    fontSize: 18
-  },
-  bigNumber: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginVertical: 8
-  },
-  bigNumberLabel: {
-    fontSize: 18,
-    color: '#666',
-    marginLeft: 8
-  },
-  calorieBar: {
-    flexDirection: 'row',
-    alignItems: 'baseline'
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16,
-    marginBottom: 8
-  },
-  statItem: {
-    alignItems: 'center'
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  subInfo: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 8
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    marginTop: 12,
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4
-  },
-  todoStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 12
-  },
-  todoStatBox: {
-    alignItems: 'center'
+    color: '#1A1C1E',
   },
   splitContainer: {
     flexDirection: 'row',
-    gap: 16
+    gap: 24,
   },
   leftHalf: {
-    flex: 1,
-    paddingRight: 8,
+    flex: 1.2,
     borderRightWidth: 1,
-    borderRightColor: '#e0e0e0'
+    borderRightColor: '#F0F0F0',
+    paddingRight: 16,
   },
   rightHalf: {
     flex: 1,
-    paddingLeft: 8
+    justifyContent: 'space-between',
   },
-  weekLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 8
+  sectionLabel: {
+    color: '#9E9E9E',
+    marginBottom: 8,
+    fontSize: 11,
+    letterSpacing: 1,
   },
-  weeklyStats: {
+  calorieContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 4
+    alignItems: 'baseline',
+    marginBottom: 12,
+    flexWrap: 'wrap',
   },
-  weekStatItem: {
-    alignItems: 'center'
+  bigNumber: {
+    lineHeight: 45,
+  },
+  goalLabel: {
+    color: '#757575',
+    marginLeft: 4,
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  subInfo: {
+    color: '#757575',
+  },
+  weeklyStatsContainer: {
+    flex: 1,
+    justifyContent: 'space-around',
+  },
+  weekStatRow: {
+    marginBottom: 12,
   },
   weekStatValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ff9800'
+    fontWeight: '700',
+  },
+  weekStatTotal: {
+    color: '#9E9E9E',
+    fontSize: 14,
   },
   weekStatLabel: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2
-  },
-  weekProgressBar: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    marginTop: 12,
-    overflow: 'hidden'
-  },
-  weekProgressFill: {
-    height: '100%',
-    borderRadius: 3
+    color: '#757575',
   },
   noDataText: {
-    fontSize: 12,
-    color: '#999',
+    color: '#9E9E9E',
     textAlign: 'center',
-    marginTop: 20
+    marginTop: 12,
+    fontSize: 12,
   },
   weeklyChartSection: {
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: 24,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0'
+    borderTopColor: '#F0F0F0',
   },
   weekNavigationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12
+    marginBottom: 16,
   },
   weekNavButton: {
-    padding: 4,
-    borderRadius: 4
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
   },
   weekTitleContainer: {
-    flex: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   weeklyChartTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666'
+    color: '#424242',
   },
   weekDateRange: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 2
+    color: '#9E9E9E',
+    marginTop: 2,
   },
-  groupedBarChart: {
-    paddingVertical: 8,
-    paddingHorizontal: 8
-  },
-  chartContainer: {
-    height: 150
+  chartScrollContent: {
+    paddingHorizontal: 4,
   },
   barsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 120,
-    gap: 16
+    height: 140,
+    gap: 12,
+    paddingBottom: 4,
   },
   barGroup: {
     alignItems: 'center',
-    minWidth: 50
+    width: 32,
   },
   barPair: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 4,
-    marginBottom: 6
+    height: 120,
+    marginBottom: 8,
   },
   barWrapper: {
-    alignItems: 'center',
-    width: 20
+    width: 8,
+    height: '100%',
+    justifyContent: 'flex-end',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 4,
   },
   bar: {
-    width: 18,
-    borderRadius: 3,
-    minHeight: 2
-  },
-  consumedBar: {
-    backgroundColor: '#2196F3'
-  },
-  netBar: {
-    backgroundColor: '#FF9800'
-  },
-  barValue: {
-    fontSize: 9,
-    color: '#666',
-    marginTop: 3
+    width: '100%',
+    borderRadius: 4,
   },
   barLabel: {
     fontSize: 10,
-    color: '#666',
-    marginTop: 4
+    color: '#9E9E9E',
+    fontWeight: '500',
   },
-  legend: {
+  todoStats: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 16
-  },
-  legendItem: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 6
+    marginVertical: 16,
   },
-  legendColor: {
-    width: 10,
-    height: 10,
-    borderRadius: 2,
-    marginRight: 5
+  todoStatBox: {
+    alignItems: 'center',
+    flex: 1,
   },
-  legendText: {
-    fontSize: 11,
-    color: '#666'
-  }
+  todoStatNumber: {
+    marginBottom: 4,
+  },
+  statLabel: {
+    color: '#757575',
+  },
+  divider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#F0F0F0',
+  },
+  todoFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyStateText: {
+    color: '#757575',
+    marginBottom: 4,
+  },
 });

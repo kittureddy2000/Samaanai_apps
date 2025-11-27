@@ -110,15 +110,17 @@ exports.syncTasksFromMicrosoft = async (userId) => {
  */
 exports.createOrUpdateTask = async (userId, msTask) => {
   try {
-    // Check if task already exists by microsoftTodoId
-    const existingTask = await prisma.task.findUnique({
+    // Check if task already exists for THIS USER by microsoftTodoId
+    // IMPORTANT: We must filter by userId to avoid updating other users' tasks
+    const existingTask = await prisma.task.findFirst({
       where: {
+        userId: userId,
         microsoftTodoId: msTask.microsoftTodoId
       }
     });
 
     if (existingTask) {
-      // Task exists - UPDATE
+      // Task exists for this user - UPDATE
       // Per user requirements: Microsoft always wins
       const updatedTask = await prisma.task.update({
         where: {
@@ -140,7 +142,7 @@ exports.createOrUpdateTask = async (userId, msTask) => {
         task: updatedTask
       };
     } else {
-      // Task doesn't exist - CREATE
+      // Task doesn't exist for this user - CREATE
       const newTask = await prisma.task.create({
         data: {
           userId: userId,

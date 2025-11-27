@@ -111,12 +111,12 @@ Region: us-west1 (Oregon)
 
 **Monthly Cost**: ~$7-10
 
-### 3. Cloud SQL Instance (n8n-postgres-instance)
+### 3. Cloud SQL Instance (samaanai-backend-staging-db)
 
 **Purpose**: Unified database server for all applications
 
 **Configuration**:
-- Instance Name: `n8n-postgres-instance`
+- Instance Name: `samaanai-backend-staging-db`
 - Database Version: PostgreSQL 15
 - Tier: db-f1-micro (0.6 GB RAM, shared CPU)
 - Region: us-west1-c

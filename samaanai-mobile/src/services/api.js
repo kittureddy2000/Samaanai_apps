@@ -162,8 +162,8 @@ export const api = {
   addOrUpdateWeightEntry: (weightData) =>
     apiClient.post('/nutrition/weight', weightData),
 
-  getWeightHistory: () =>
-    apiClient.get('/nutrition/weight'),
+  getWeightHistory: (period = 'month') =>
+    apiClient.get('/nutrition/weight/history', { params: { period } }),
 
   // Todo
   getTasks: (params) =>
@@ -215,7 +215,23 @@ export const api = {
     apiClient.post('/integrations/microsoft/sync'),
 
   disconnectMicrosoft: () =>
-    apiClient.delete('/integrations/microsoft/disconnect')
+    apiClient.delete('/integrations/microsoft/disconnect'),
+
+  getMicrosoftStatus: () =>
+    apiClient.get('/integrations/microsoft/status'),
+
+  // Google Tasks Integration
+  connectGoogle: () =>
+    apiClient.get('/integrations/google/connect'),
+
+  syncGoogleTasks: () =>
+    apiClient.post('/integrations/google/sync'),
+
+  disconnectGoogle: () =>
+    apiClient.delete('/integrations/google/disconnect'),
+
+  getGoogleStatus: () =>
+    apiClient.get('/integrations/google/status')
 };
 
 export default api;

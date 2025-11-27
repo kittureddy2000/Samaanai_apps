@@ -112,13 +112,36 @@ exports.exchangeCodeForTokens = async (code, redirectUri) => {
       throw new Error('No access token received');
     }
 
+    // Log response for debugging
+    console.log('Microsoft OAuth response received:', {
+      hasAccessToken: !!response.accessToken,
+      hasRefreshToken: !!response.refreshToken,
+      hasAccount: !!response.account,
+      expiresIn: response.expiresIn
+    });
+
+    // Try to get refresh token from response or account
+    let refreshToken = response.refreshToken;
+
+    // If no refresh token in response, check the account object
+    if (!refreshToken && response.account && response.account.idTokenClaims) {
+      console.warn('No refresh token in response, MSAL may be caching it');
+      // For MSAL, we might need to rely on the token cache
+      // This is a known limitation - refresh tokens are cached by MSAL
+    }
+
+    if (!refreshToken) {
+      console.error('WARNING: No refresh token received from Microsoft. offline_access scope may not be granted or MSAL is caching the token.');
+      console.error('This will prevent token refresh. User will need to re-authenticate when access token expires.');
+    }
+
     // Calculate expiration time
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + (response.expiresIn || 3600));
 
     return {
       accessToken: response.accessToken,
-      refreshToken: response.refreshToken || null,
+      refreshToken: refreshToken || null,
       expiresAt: expiresAt,
       scope: SCOPES.join(' ')
     };

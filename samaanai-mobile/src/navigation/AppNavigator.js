@@ -18,6 +18,7 @@ import MonthlyReportScreen from '../screens/nutrition/MonthlyReportScreen';
 import YearlyReportScreen from '../screens/nutrition/YearlyReportScreen';
 import GoalsScreen from '../screens/nutrition/GoalsScreen';
 import FoodPreferencesScreen from '../screens/nutrition/FoodPreferencesScreen';
+import WeightTrackingScreen from '../screens/nutrition/WeightTrackingScreen';
 import TodoScreen from '../screens/todo/TodoScreen';
 import AddEditTaskScreen from '../screens/todo/AddEditTaskScreen';
 import TaskDetailScreen from '../screens/todo/TaskDetailScreen';
@@ -65,6 +66,11 @@ function NutritionStack() {
         name="Goals"
         component={GoalsScreen}
         options={{ title: 'Nutrition Goals' }}
+      />
+      <Stack.Screen
+        name="WeightTracking"
+        component={WeightTrackingScreen}
+        options={{ title: 'Weight Tracking' }}
       />
     </Stack.Navigator>
   );

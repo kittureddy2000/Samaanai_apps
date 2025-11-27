@@ -148,6 +148,7 @@ model Task {
   completed       Boolean   @default(false)
   completedAt     DateTime? @map("completed_at")
   microsoftTodoId String?   @unique @map("microsoft_todo_id")
+  googleTaskId    String?   @unique @map("google_task_id")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 

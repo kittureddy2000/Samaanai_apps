@@ -138,6 +138,60 @@ exports.createWeightEntry = async (req, res, next) => {
   }
 };
 
+exports.getWeightHistory = async (req, res, next) => {
+  try {
+    const { period = 'month' } = req.query; // week, month, year, all
+    const userId = req.user.id;
+
+    let startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    // Calculate start date based on period
+    switch (period) {
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(startDate.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        break;
+      case 'all':
+        startDate = new Date('2000-01-01'); // Far past date
+        break;
+      default:
+        startDate.setMonth(startDate.getMonth() - 1);
+    }
+
+    // Get weight entries for the period
+    const entries = await prisma.weightEntry.findMany({
+      where: {
+        userId,
+        date: {
+          gte: startDate
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    // Calculate statistics
+    const weights = entries.map(e => e.weight);
+    const stats = {
+      current: entries.length > 0 ? entries[entries.length - 1].weight : null,
+      min: weights.length > 0 ? Math.min(...weights) : null,
+      max: weights.length > 0 ? Math.max(...weights) : null,
+      avg: weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : null,
+      change: entries.length >= 2 ? entries[entries.length - 1].weight - entries[0].weight : 0,
+      totalEntries: entries.length
+    };
+
+    res.json({ entries, stats, period });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getDailyReport = async (req, res, next) => {
   try {
     const { date } = req.query;

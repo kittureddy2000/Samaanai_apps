@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Text, Card, Title, Button, ActivityIndicator, List, Avatar, Divider, Portal, Dialog } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -10,6 +11,13 @@ export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
+  const [disconnectMicrosoftDialogVisible, setDisconnectMicrosoftDialogVisible] = useState(false);
+  const [disconnectGoogleDialogVisible, setDisconnectGoogleDialogVisible] = useState(false);
+
+  // Integration states
+  const [microsoftConnected, setMicrosoftConnected] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
+  const [checkingIntegrations, setCheckingIntegrations] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -24,8 +32,25 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const checkIntegrationStatus = async () => {
+    try {
+      setCheckingIntegrations(true);
+      const [microsoftStatus, googleStatus] = await Promise.all([
+        api.getMicrosoftStatus().catch(() => ({ data: { connected: false } })),
+        api.getGoogleStatus().catch(() => ({ data: { connected: false } }))
+      ]);
+      setMicrosoftConnected(microsoftStatus.data.connected);
+      setGoogleConnected(googleStatus.data.connected);
+    } catch (err) {
+      console.error('Integration status error:', err);
+    } finally {
+      setCheckingIntegrations(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
+    checkIntegrationStatus();
   }, []);
 
   const handleLogout = () => {
@@ -50,6 +75,112 @@ export default function ProfileScreen({ navigation }) {
   const confirmLogout = () => {
     setLogoutDialogVisible(false);
     logout();
+  };
+
+  const handleConnectMicrosoft = async () => {
+    try {
+      const { data } = await api.connectMicrosoft();
+      await WebBrowser.openBrowserAsync(data.authorizationUrl);
+      // Refresh status after OAuth
+      setTimeout(() => checkIntegrationStatus(), 2000);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to connect Microsoft To Do');
+      console.error(err);
+    }
+  };
+
+  const handleDisconnectMicrosoft = async () => {
+    if (Platform.OS === 'web') {
+      setDisconnectMicrosoftDialogVisible(true);
+    } else {
+      Alert.alert(
+        'Disconnect Microsoft To Do',
+        'Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.disconnectMicrosoft();
+                setMicrosoftConnected(false);
+                Alert.alert('Success', 'Microsoft To Do disconnected');
+              } catch (err) {
+                Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
+                console.error(err);
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const confirmDisconnectMicrosoft = async () => {
+    setDisconnectMicrosoftDialogVisible(false);
+    try {
+      await api.disconnectMicrosoft();
+      setMicrosoftConnected(false);
+      Alert.alert('Success', 'Microsoft To Do disconnected');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to disconnect Microsoft To Do');
+      console.error(err);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { data } = await api.connectGoogle();
+      if (data.url) {
+        await WebBrowser.openBrowserAsync(data.url);
+        // Refresh status after OAuth
+        setTimeout(() => checkIntegrationStatus(), 2000);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to connect Google Tasks');
+      console.error(err);
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    if (Platform.OS === 'web') {
+      setDisconnectGoogleDialogVisible(true);
+    } else {
+      Alert.alert(
+        'Disconnect Google Tasks',
+        'Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.disconnectGoogle();
+                setGoogleConnected(false);
+                Alert.alert('Success', 'Google Tasks disconnected');
+              } catch (err) {
+                Alert.alert('Error', 'Failed to disconnect Google Tasks');
+                console.error(err);
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  const confirmDisconnectGoogle = async () => {
+    setDisconnectGoogleDialogVisible(false);
+    try {
+      await api.disconnectGoogle();
+      setGoogleConnected(false);
+      Alert.alert('Success', 'Google Tasks disconnected');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to disconnect Google Tasks');
+      console.error(err);
+    }
   };
 
   if (loading) {
@@ -149,6 +280,44 @@ export default function ProfileScreen({ navigation }) {
         />
       </Card>
 
+      {/* Integrations */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <Title>Integrations</Title>
+          <Text style={styles.sectionDescription}>Connect external apps to sync your tasks</Text>
+        </Card.Content>
+        <Divider />
+        <List.Item
+          title="Microsoft To Do"
+          description={microsoftConnected ? 'Connected' : 'Not connected'}
+          left={props => <List.Icon {...props} icon="microsoft" color="#00A4EF" />}
+          right={props => (
+            <Button
+              mode={microsoftConnected ? 'outlined' : 'contained'}
+              onPress={microsoftConnected ? handleDisconnectMicrosoft : handleConnectMicrosoft}
+              compact
+            >
+              {microsoftConnected ? 'Disconnect' : 'Connect'}
+            </Button>
+          )}
+        />
+        <Divider />
+        <List.Item
+          title="Google Tasks"
+          description={googleConnected ? 'Connected' : 'Not connected'}
+          left={props => <List.Icon {...props} icon="google" color="#DB4437" />}
+          right={props => (
+            <Button
+              mode={googleConnected ? 'outlined' : 'contained'}
+              onPress={googleConnected ? handleDisconnectGoogle : handleConnectGoogle}
+              compact
+            >
+              {googleConnected ? 'Disconnect' : 'Connect'}
+            </Button>
+          )}
+        />
+      </Card>
+
       {/* App Info */}
       <Card style={styles.card}>
         <Card.Content>
@@ -209,8 +378,9 @@ export default function ProfileScreen({ navigation }) {
 
       <View style={styles.spacer} />
 
-      {/* Logout Dialog for Web */}
+      {/* Dialogs for Web */}
       <Portal>
+        {/* Logout Dialog */}
         <Dialog visible={logoutDialogVisible} onDismiss={() => setLogoutDialogVisible(false)}>
           <Dialog.Title>Logout</Dialog.Title>
           <Dialog.Content>
@@ -219,6 +389,30 @@ export default function ProfileScreen({ navigation }) {
           <Dialog.Actions>
             <Button onPress={() => setLogoutDialogVisible(false)}>Cancel</Button>
             <Button onPress={confirmLogout} textColor="#d32f2f">Logout</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Disconnect Microsoft Dialog */}
+        <Dialog visible={disconnectMicrosoftDialogVisible} onDismiss={() => setDisconnectMicrosoftDialogVisible(false)}>
+          <Dialog.Title>Disconnect Microsoft To Do</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to disconnect Microsoft To Do? Your tasks will remain in Samaanai.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDisconnectMicrosoftDialogVisible(false)}>Cancel</Button>
+            <Button onPress={confirmDisconnectMicrosoft} textColor="#d32f2f">Disconnect</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Disconnect Google Dialog */}
+        <Dialog visible={disconnectGoogleDialogVisible} onDismiss={() => setDisconnectGoogleDialogVisible(false)}>
+          <Dialog.Title>Disconnect Google Tasks</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to disconnect Google Tasks? Your tasks will remain in Samaanai.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDisconnectGoogleDialogVisible(false)}>Cancel</Button>
+            <Button onPress={confirmDisconnectGoogle} textColor="#d32f2f">Disconnect</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -276,6 +470,11 @@ const styles = StyleSheet.create({
   memberSince: {
     fontSize: 14,
     color: '#999'
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4
   },
   card: {
     margin: 16,
