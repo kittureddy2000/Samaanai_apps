@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { Text, Card, Title, Button, TextInput, ActivityIndicator, Snackbar } from 'react-native-paper';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../../services/api';
 import { format, subDays, addDays } from 'date-fns';
 
@@ -13,6 +14,7 @@ export default function DailyEntryScreen({ navigation }) {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState('success'); // 'success' or 'error'
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [formValues, setFormValues] = useState({
     breakfast: '',
@@ -78,6 +80,25 @@ export default function DailyEntryScreen({ navigation }) {
 
   const handleNextDay = () => {
     setSelectedDate(prevDate => addDays(prevDate, 1));
+  };
+
+  const handleDatePress = () => {
+    setShowDatePicker(true);
+  };
+
+  const handleDateChange = (event, date) => {
+    // On iOS, the picker stays open until dismissed
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  const handleDatePickerClose = () => {
+    setShowDatePicker(false);
   };
 
   const handleInputChange = (field, value) => {
@@ -191,9 +212,29 @@ export default function DailyEntryScreen({ navigation }) {
       {/* Date Navigation */}
       <View style={styles.dateSelector}>
         <Button mode="outlined" onPress={handlePreviousDay}>←</Button>
-        <Text style={styles.dateText}>{format(selectedDate, 'MMMM d, yyyy')}</Text>
+        <TouchableOpacity onPress={handleDatePress} style={styles.dateTouchable}>
+          <Text style={styles.dateText}>{format(selectedDate, 'MMM d, yyyy')}</Text>
+        </TouchableOpacity>
         <Button mode="outlined" onPress={handleNextDay}>→</Button>
       </View>
+
+      {/* Date Picker */}
+      {showDatePicker && (
+        <>
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            maximumDate={new Date()} // Can't select future dates
+          />
+          {Platform.OS === 'ios' && (
+            <View style={styles.iosPickerButtons}>
+              <Button onPress={handleDatePickerClose}>Done</Button>
+            </View>
+          )}
+        </>
+      )}
 
       {error && (
         <View style={styles.errorBanner}>
@@ -346,6 +387,18 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 18,
     fontWeight: '600'
+  },
+  dateTouchable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8
+  },
+  iosPickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 16,
+    backgroundColor: '#fff'
   },
   errorBanner: {
     backgroundColor: '#d32f2f',
