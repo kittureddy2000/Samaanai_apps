@@ -338,121 +338,119 @@ export default function TodoScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Stats Card */}
-      {stats && (
-        <Card style={styles.statsCard}>
-          <Card.Content>
-            <View style={styles.statsHeader}>
-              <Text style={styles.statsTitle}>Tasks Overview</Text>
-              <View style={styles.headerActions}>
-                {/* Integration Sync Buttons */}
-                {microsoftConnected && (
-                  <TouchableOpacity
-                    onPress={handleSyncMicrosoft}
-                    disabled={microsoftSyncing}
-                    style={styles.syncIconButton}
-                  >
-                    <MaterialCommunityIcons
-                      name={microsoftSyncing ? "sync" : "microsoft"}
-                      size={20}
-                      color={microsoftSyncing ? "#999" : "#00A4EF"}
-                    />
-                  </TouchableOpacity>
-                )}
-                {googleConnected && (
-                  <TouchableOpacity
-                    onPress={handleSyncGoogle}
-                    disabled={googleSyncing}
-                    style={styles.syncIconButton}
-                  >
-                    <MaterialCommunityIcons
-                      name={googleSyncing ? "sync" : "google"}
-                      size={20}
-                      color={googleSyncing ? "#999" : "#DB4437"}
-                    />
-                  </TouchableOpacity>
-                )}
-                <Searchbar
-                  placeholder="Search tasks..."
-                  onChangeText={setSearchQuery}
-                  value={searchQuery}
-                  style={styles.compactSearchBar}
-                  inputStyle={styles.compactSearchInput}
-                  icon="magnify"
-                  clearIcon={searchQuery ? "close" : undefined}
+      {/* Header Section */}
+      <View style={styles.headerSection}>
+        <View style={styles.searchRow}>
+          <Searchbar
+            placeholder="Search tasks..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+            inputStyle={styles.searchInput}
+            icon="magnify"
+            clearIcon={searchQuery ? "close" : undefined}
+          />
+          <View style={styles.headerIcons}>
+            {microsoftConnected && (
+              <TouchableOpacity
+                onPress={handleSyncMicrosoft}
+                disabled={microsoftSyncing}
+                style={styles.syncIconButton}
+              >
+                <MaterialCommunityIcons
+                  name={microsoftSyncing ? "sync" : "microsoft"}
+                  size={22}
+                  color={microsoftSyncing ? "#999" : "#00A4EF"}
                 />
-                <Menu
-                  visible={sortMenuVisible}
-                  onDismiss={() => setSortMenuVisible(false)}
-                  anchor={
-                    <TouchableOpacity
-                      onPress={() => setSortMenuVisible(true)}
-                      style={styles.sortIconButton}
-                    >
-                      <MaterialCommunityIcons name="sort" size={20} color="#666" />
-                    </TouchableOpacity>
-                  }
+              </TouchableOpacity>
+            )}
+            {googleConnected && (
+              <TouchableOpacity
+                onPress={handleSyncGoogle}
+                disabled={googleSyncing}
+                style={styles.syncIconButton}
+              >
+                <MaterialCommunityIcons
+                  name={googleSyncing ? "sync" : "google"}
+                  size={22}
+                  color={googleSyncing ? "#999" : "#DB4437"}
+                />
+              </TouchableOpacity>
+            )}
+            <Menu
+              visible={sortMenuVisible}
+              onDismiss={() => setSortMenuVisible(false)}
+              anchor={
+                <TouchableOpacity
+                  onPress={() => setSortMenuVisible(true)}
+                  style={styles.sortIconButton}
                 >
-                  <Menu.Item
-                    onPress={() => {
-                      setSortBy('dueDate');
-                      setSortMenuVisible(false);
-                    }}
-                    title="Sort by Due Date"
-                    leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
-                  />
-                  <Menu.Item
-                    onPress={() => {
-                      setSortBy('name');
-                      setSortMenuVisible(false);
-                    }}
-                    title="Sort by Name"
-                    leadingIcon={sortBy === 'name' ? 'check' : undefined}
-                  />
-                  <Menu.Item
-                    onPress={() => {
-                      setSortBy('createdAt');
-                      setSortMenuVisible(false);
-                    }}
-                    title="Sort by Created Date"
-                    leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
-                  />
-                </Menu>
-              </View>
-            </View>
-            <View style={styles.statsRow}>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => setFilter('all')}
-              >
-                <Text style={styles.statValue}>{stats.total}</Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => setFilter('pending')}
-              >
-                <Text style={[styles.statValue, styles.pendingValue]}>{stats.pending}</Text>
-                <Text style={styles.statLabel}>Pending</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => setFilter('completed')}
-              >
-                <Text style={[styles.statValue, styles.completedValue]}>{stats.completed}</Text>
-                <Text style={styles.statLabel}>Completed</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.statItem}
-                onPress={() => setFilter('overdue')}
-              >
-                <Text style={[styles.statValue, styles.overdueValue]}>{stats.overdue}</Text>
-                <Text style={styles.statLabel}>Overdue</Text>
-              </TouchableOpacity>
-            </View>
-          </Card.Content>
-        </Card>
-      )}
+                  <MaterialCommunityIcons name="sort" size={22} color="#666" />
+                </TouchableOpacity>
+              }
+            >
+              <Menu.Item
+                onPress={() => {
+                  setSortBy('dueDate');
+                  setSortMenuVisible(false);
+                }}
+                title="Sort by Due Date"
+                leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+              />
+              <Menu.Item
+                onPress={() => {
+                  setSortBy('name');
+                  setSortMenuVisible(false);
+                }}
+                title="Sort by Name"
+                leadingIcon={sortBy === 'name' ? 'check' : undefined}
+              />
+              <Menu.Item
+                onPress={() => {
+                  setSortBy('createdAt');
+                  setSortMenuVisible(false);
+                }}
+                title="Sort by Created Date"
+                leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
+              />
+            </Menu>
+          </View>
+        </View>
+
+        {/* Stats Chips */}
+        {stats && (
+          <View style={styles.statsChipsContainer}>
+            <TouchableOpacity
+              style={[styles.statChip, filter === 'all' && styles.statChipActive]}
+              onPress={() => setFilter('all')}
+            >
+              <Text style={[styles.statChipValue, filter === 'all' && styles.statChipValueActive]}>{stats.total}</Text>
+              <Text style={[styles.statChipLabel, filter === 'all' && styles.statChipLabelActive]}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statChip, filter === 'pending' && styles.statChipActive]}
+              onPress={() => setFilter('pending')}
+            >
+              <Text style={[styles.statChipValue, styles.pendingValue, filter === 'pending' && styles.statChipValueActive]}>{stats.pending}</Text>
+              <Text style={[styles.statChipLabel, filter === 'pending' && styles.statChipLabelActive]}>Pending</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statChip, filter === 'completed' && styles.statChipActive]}
+              onPress={() => setFilter('completed')}
+            >
+              <Text style={[styles.statChipValue, styles.completedValue, filter === 'completed' && styles.statChipValueActive]}>{stats.completed}</Text>
+              <Text style={[styles.statChipLabel, filter === 'completed' && styles.statChipLabelActive]}>Done</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.statChip, filter === 'overdue' && styles.statChipActive]}
+              onPress={() => setFilter('overdue')}
+            >
+              <Text style={[styles.statChipValue, styles.overdueValue, filter === 'overdue' && styles.statChipValueActive]}>{stats.overdue}</Text>
+              <Text style={[styles.statChipLabel, filter === 'overdue' && styles.statChipLabelActive]}>Overdue</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
 
       {/* Tasks List */}
       <ScrollView
@@ -484,7 +482,7 @@ export default function TodoScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fafafa'
+    backgroundColor: '#f5f6f8'
   },
   centered: {
     flex: 1,
@@ -506,71 +504,78 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: 8
   },
-  statsCard: {
-    margin: 12,
-    marginBottom: 6
+  headerSection: {
+    backgroundColor: '#fff',
+    paddingTop: 12,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8e8e8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2
   },
-  searchBar: {
-    margin: 12,
-    marginTop: 6,
-    marginBottom: 12,
-    elevation: 0,
-    backgroundColor: '#fff'
-  },
-  statsHeader: {
+  searchRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
     marginBottom: 12
   },
-  statsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    flex: 0,
-    minWidth: 100
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  searchBar: {
     flex: 1,
-    marginLeft: 8
-  },
-  compactSearchBar: {
-    flex: 1,
-    height: 36,
+    height: 42,
     elevation: 0,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 18
+    backgroundColor: '#f5f6f8',
+    borderRadius: 21
   },
-  compactSearchInput: {
+  searchInput: {
     fontSize: 14,
     minHeight: 0,
     paddingVertical: 0
   },
+  headerIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
   syncIconButton: {
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    marginRight: 8
+    padding: 8,
+    borderRadius: 22,
+    backgroundColor: '#f5f6f8'
   },
   sortIconButton: {
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5'
+    padding: 8,
+    borderRadius: 22,
+    backgroundColor: '#f5f6f8'
   },
-  statsRow: {
+  statsChipsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around'
+    gap: 10,
+    justifyContent: 'space-between'
   },
-  statItem: {
+  statChip: {
+    flex: 1,
+    backgroundColor: '#f5f6f8',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     alignItems: 'center',
-    paddingVertical: 4
+    borderWidth: 1,
+    borderColor: 'transparent'
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  statChipActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3'
+  },
+  statChipValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1976d2',
+    marginBottom: 2
+  },
+  statChipValueActive: {
     color: '#1976d2'
   },
   pendingValue: {
@@ -582,72 +587,87 @@ const styles = StyleSheet.create({
   overdueValue: {
     color: '#d32f2f'
   },
-  statLabel: {
+  statChipLabel: {
     fontSize: 11,
     color: '#666',
-    marginTop: 2
+    fontWeight: '500'
+  },
+  statChipLabelActive: {
+    color: '#1976d2',
+    fontWeight: '600'
   },
   tasksList: {
-    flex: 1
+    flex: 1,
+    paddingTop: 8
   },
   taskItem: {
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0'
+    marginHorizontal: 12,
+    marginVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1
   },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   checkboxContainer: {
-    marginRight: 16
+    marginRight: 14
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#d0d0d0',
+    borderWidth: 2.5,
+    borderColor: '#bdbdbd',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff'
   },
   checkboxCompleted: {
-    backgroundColor: '#8bc34a',
-    borderColor: '#8bc34a'
+    backgroundColor: '#66bb6a',
+    borderColor: '#66bb6a'
   },
   taskContent: {
     flex: 1,
     marginRight: 12
   },
   taskName: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#2c2c2c',
-    marginBottom: 4
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#212121',
+    marginBottom: 4,
+    lineHeight: 20
   },
   completedText: {
     color: '#9e9e9e',
     textDecorationLine: 'line-through'
   },
   dueDateText: {
-    fontSize: 13,
-    color: '#7cb342',
+    fontSize: 12,
+    color: '#757575',
     marginTop: 2
   },
   completedDueDate: {
-    color: '#b0b0b0',
+    color: '#bdbdbd',
     textDecorationLine: 'line-through'
   },
   overdueText: {
-    color: '#d32f2f'
+    color: '#e53935',
+    fontWeight: '500'
   },
   priorityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6
+    width: 10,
+    height: 10,
+    borderRadius: 5
   },
   emptyState: {
     alignItems: 'center',
