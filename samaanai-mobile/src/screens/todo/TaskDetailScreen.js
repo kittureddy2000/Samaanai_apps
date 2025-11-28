@@ -199,40 +199,90 @@ export default function TaskDetailScreen({ route, navigation }) {
               </View>
             )}
 
-            {task.imageUrl && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Attachment</Text>
-                {isImageFile(task.imageUrl) ? (
-                  <Image
-                    source={{ uri: task.imageUrl }}
-                    style={styles.taskImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <TouchableOpacity
-                    style={styles.fileAttachment}
-                    onPress={() => handleOpenFile(task.imageUrl)}
-                  >
-                    <MaterialCommunityIcons
-                      name={getFileIcon(task.imageUrl)}
-                      size={48}
-                      color="#1976d2"
-                    />
-                    <View style={styles.fileInfo}>
-                      <Text style={styles.fileName} numberOfLines={2}>
-                        {getFileName(task.imageUrl)}
-                      </Text>
-                      <Text style={styles.fileAction}>Tap to open</Text>
-                    </View>
-                    <MaterialCommunityIcons
-                      name="open-in-new"
-                      size={24}
-                      color="#666"
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
+            {task.imageUrl && (() => {
+              // Try to parse attachments from JSON (Microsoft To Do sync)
+              let attachments = [];
+              try {
+                const parsed = JSON.parse(task.imageUrl);
+                if (Array.isArray(parsed)) {
+                  attachments = parsed;
+                }
+              } catch (e) {
+                // Not JSON, treat as single attachment URL
+                attachments = [{ name: getFileName(task.imageUrl), url: task.imageUrl }];
+              }
+
+              return (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>
+                    Attachment{attachments.length > 1 ? 's' : ''} ({attachments.length})
+                  </Text>
+                  {attachments.map((attachment, index) => {
+                    // For old-style single URL attachments
+                    if (attachment.url) {
+                      return isImageFile(attachment.url) ? (
+                        <Image
+                          key={index}
+                          source={{ uri: attachment.url }}
+                          style={styles.taskImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.fileAttachment}
+                          onPress={() => handleOpenFile(attachment.url)}
+                        >
+                          <MaterialCommunityIcons
+                            name={getFileIcon(attachment.url)}
+                            size={48}
+                            color="#1976d2"
+                          />
+                          <View style={styles.fileInfo}>
+                            <Text style={styles.fileName} numberOfLines={2}>
+                              {attachment.name || getFileName(attachment.url)}
+                            </Text>
+                            <Text style={styles.fileAction}>Tap to open</Text>
+                          </View>
+                          <MaterialCommunityIcons
+                            name="open-in-new"
+                            size={24}
+                            color="#666"
+                          />
+                        </TouchableOpacity>
+                      );
+                    }
+
+                    // For Microsoft To Do attachments (metadata only)
+                    return (
+                      <View key={index} style={styles.fileAttachment}>
+                        <MaterialCommunityIcons
+                          name={getFileIcon(attachment.name)}
+                          size={48}
+                          color="#1976d2"
+                        />
+                        <View style={styles.fileInfo}>
+                          <Text style={styles.fileName} numberOfLines={2}>
+                            {attachment.name}
+                          </Text>
+                          <Text style={styles.fileSize}>
+                            {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Size unknown'}
+                          </Text>
+                          <Text style={styles.attachmentNote}>
+                            From Microsoft To Do (view in MS To Do app)
+                          </Text>
+                        </View>
+                        <MaterialCommunityIcons
+                          name="microsoft"
+                          size={24}
+                          color="#00A4EF"
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })()}
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Created</Text>
@@ -418,6 +468,16 @@ const styles = StyleSheet.create({
   fileAction: {
     fontSize: 12,
     color: '#1976d2'
+  },
+  fileSize: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2
+  },
+  attachmentNote: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic'
   },
   actionButton: {
     marginVertical: 8
