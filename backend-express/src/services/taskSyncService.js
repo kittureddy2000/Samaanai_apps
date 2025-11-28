@@ -124,6 +124,7 @@ exports.createOrUpdateTask = async (userId, msTask) => {
     if (msTask.attachments && msTask.attachments.length > 0) {
       // Store all attachments metadata as JSON
       imageUrl = JSON.stringify(msTask.attachments);
+      console.log(`Storing ${msTask.attachments.length} attachment(s) for task "${msTask.name}"`);
     }
 
     if (existingTask) {

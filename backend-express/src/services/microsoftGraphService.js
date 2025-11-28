@@ -230,6 +230,12 @@ exports.getAndTransformTasks = async (accessToken, excludeCompleted = true) => {
       const attachments = await exports.getTaskAttachments(accessToken, listId, msTask.id);
       transformedTask.attachments = attachments;
 
+      // Log attachment fetching for debugging
+      if (attachments.length > 0) {
+        console.log(`Task "${msTask.title}" has ${attachments.length} attachment(s):`,
+          attachments.map(a => `${a.name} (${a.size} bytes)`).join(', '));
+      }
+
       return transformedTask;
     }));
 
