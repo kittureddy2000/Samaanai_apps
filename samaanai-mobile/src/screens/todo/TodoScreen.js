@@ -330,7 +330,25 @@ export default function TodoScreen({ navigation }) {
             )}
           </View>
 
-          <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+          <View style={styles.taskRightSection}>
+            {task.microsoftTodoId && (
+              <MaterialCommunityIcons
+                name="microsoft"
+                size={16}
+                color="#00A4EF"
+                style={styles.integrationIcon}
+              />
+            )}
+            {task.googleTaskId && (
+              <MaterialCommunityIcons
+                name="google"
+                size={16}
+                color="#DB4437"
+                style={styles.integrationIcon}
+              />
+            )}
+            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -663,6 +681,14 @@ const styles = StyleSheet.create({
   overdueText: {
     color: '#e53935',
     fontWeight: '500'
+  },
+  taskRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  integrationIcon: {
+    marginRight: 2
   },
   priorityDot: {
     width: 10,
