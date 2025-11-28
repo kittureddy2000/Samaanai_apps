@@ -147,13 +147,15 @@ model Task {
   imageUrl        String?   @map("image_url")
   completed       Boolean   @default(false)
   completedAt     DateTime? @map("completed_at")
-  microsoftTodoId String?   @unique @map("microsoft_todo_id")
-  googleTaskId    String?   @unique @map("google_task_id")
+  microsoftTodoId String?   @map("microsoft_todo_id")
+  googleTaskId    String?   @map("google_task_id")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, microsoftTodoId])
+  @@unique([userId, googleTaskId])
   @@index([userId, dueDate(sort: Asc)])
   @@index([userId, completed])
   @@map("todo_task")

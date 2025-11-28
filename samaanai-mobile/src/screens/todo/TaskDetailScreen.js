@@ -255,11 +255,11 @@ export default function TaskDetailScreen({ route, navigation }) {
 
                     // For Microsoft To Do attachments (metadata only)
                     return (
-                      <View key={index} style={styles.fileAttachment}>
+                      <View key={index} style={[styles.fileAttachment, styles.msAttachment]}>
                         <MaterialCommunityIcons
                           name={getFileIcon(attachment.name)}
                           size={48}
-                          color="#1976d2"
+                          color="#999"
                         />
                         <View style={styles.fileInfo}>
                           <Text style={styles.fileName} numberOfLines={2}>
@@ -268,9 +268,17 @@ export default function TaskDetailScreen({ route, navigation }) {
                           <Text style={styles.fileSize}>
                             {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Size unknown'}
                           </Text>
-                          <Text style={styles.attachmentNote}>
-                            From Microsoft To Do (view in MS To Do app)
-                          </Text>
+                          <View style={styles.msNoteContainer}>
+                            <MaterialCommunityIcons
+                              name="information-outline"
+                              size={14}
+                              color="#00A4EF"
+                              style={styles.infoIcon}
+                            />
+                            <Text style={styles.attachmentNote}>
+                              File available only in Microsoft To Do app
+                            </Text>
+                          </View>
                         </View>
                         <MaterialCommunityIcons
                           name="microsoft"
@@ -474,10 +482,24 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 2
   },
+  msAttachment: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+    opacity: 0.9
+  },
+  msNoteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4
+  },
+  infoIcon: {
+    marginRight: 4
+  },
   attachmentNote: {
     fontSize: 11,
-    color: '#999',
-    fontStyle: 'italic'
+    color: '#00A4EF',
+    fontStyle: 'italic',
+    flex: 1
   },
   actionButton: {
     marginVertical: 8
