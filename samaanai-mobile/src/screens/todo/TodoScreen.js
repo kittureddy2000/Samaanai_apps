@@ -250,106 +250,89 @@ export default function TodoScreen({ navigation }) {
     );
   }
 
+  const getPriorityColor = (task) => {
+    // Determine priority color based on task properties
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+    if (isOverdue) return '#d32f2f'; // Red for overdue
+    if (task.completed) return '#8bc34a'; // Light green for completed
+
+    // Check if due today
+    const today = new Date();
+    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+    if (dueDate) {
+      const isToday = dueDate.toDateString() === today.toDateString();
+      if (isToday) return '#ff9800'; // Orange for today
+    }
+
+    return '#42a5f5'; // Blue default
+  };
+
+  const formatDueDate = (dueDate) => {
+    if (!dueDate) return null;
+    const date = new Date(dueDate);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    } else {
+      return format(date, 'MMM dd, yyyy');
+    }
+  };
+
   const renderTaskCard = (task) => {
     const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
-    const hasMeta = task.dueDate || task.reminderType;
-    const hasAttachment = task.imageUrl && task.imageUrl.trim() !== '';
+    const priorityColor = getPriorityColor(task);
+    const dueDateText = formatDueDate(task.dueDate);
 
     return (
-      <Card key={task.id} style={[styles.taskCard, task.completed && styles.completedTask]}>
-        <Card.Content style={styles.compactCardContent}>
-          <View style={styles.taskHeader}>
-            <TouchableOpacity onPress={() => handleToggleTask(task.id)} style={styles.checkboxContainer}>
-              <MaterialCommunityIcons
-                name={task.completed ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                size={24}
-                color={task.completed ? '#4caf50' : '#999'}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.taskContent}
-              onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
-            >
-              <View style={styles.taskNameRow}>
-                <Text style={[styles.taskName, task.completed && styles.completedText]}>
-                  {task.name}
-                </Text>
-                {task.microsoftTodoId && (
-                  <MaterialCommunityIcons
-                    name="microsoft"
-                    size={14}
-                    color="#00A4EF"
-                    style={styles.microsoftIcon}
-                  />
-                )}
-                {task.googleTaskId && (
-                  <MaterialCommunityIcons
-                    name="google"
-                    size={14}
-                    color="#DB4437"
-                    style={styles.microsoftIcon}
-                  />
-                )}
-                {hasAttachment && (
-                  <MaterialCommunityIcons
-                    name="paperclip"
-                    size={14}
-                    color="#666"
-                    style={styles.attachmentIcon}
-                  />
-                )}
-              </View>
-              {task.description && (
-                <Text style={styles.taskDescription} numberOfLines={2}>
-                  {task.description}
-                </Text>
+      <TouchableOpacity
+        key={task.id}
+        style={styles.taskItem}
+        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.taskRow}>
+          <TouchableOpacity
+            onPress={() => handleToggleTask(task.id)}
+            style={styles.checkboxContainer}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <View style={[
+              styles.checkbox,
+              task.completed && styles.checkboxCompleted
+            ]}>
+              {task.completed && (
+                <MaterialCommunityIcons name="check" size={16} color="#fff" />
               )}
-              {hasMeta && (
-                <View style={styles.taskMeta}>
-                  {task.dueDate && (
-                    <View style={styles.metaItem}>
-                      <MaterialCommunityIcons
-                        name="calendar"
-                        size={12}
-                        color={isOverdue ? '#d32f2f' : '#666'}
-                      />
-                      <Text style={[styles.metaText, isOverdue && styles.overdueText]}>
-                        {format(new Date(task.dueDate), 'MMM dd')}
-                      </Text>
-                    </View>
-                  )}
-                  {task.reminderType && (
-                    <View style={styles.metaItem}>
-                      <MaterialCommunityIcons
-                        name="bell"
-                        size={12}
-                        color="#666"
-                      />
-                      <Text style={styles.metaText}>
-                        {task.reminderType}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </TouchableOpacity>
-            <View style={styles.taskActions}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('EditTask', { task })}
-                style={styles.iconButton}
-              >
-                <MaterialCommunityIcons name="pencil" size={20} color="#1976d2" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleDeleteTask(task.id)}
-                style={styles.iconButton}
-              >
-                <MaterialCommunityIcons name="delete" size={20} color="#d32f2f" />
-              </TouchableOpacity>
             </View>
+          </TouchableOpacity>
+
+          <View style={styles.taskContent}>
+            <Text style={[
+              styles.taskName,
+              task.completed && styles.completedText
+            ]}>
+              {task.name}
+            </Text>
+            {dueDateText && (
+              <Text style={[
+                styles.dueDateText,
+                isOverdue && styles.overdueText,
+                task.completed && styles.completedDueDate
+              ]}>
+                Due {dueDateText}
+                {task.reminderType && ` • ${task.reminderType}`}
+              </Text>
+            )}
           </View>
-        </Card.Content>
-      </Card>
+
+          <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -501,7 +484,7 @@ export default function TodoScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#fafafa'
   },
   centered: {
     flex: 1,
@@ -607,92 +590,70 @@ const styles = StyleSheet.create({
   tasksList: {
     flex: 1
   },
-  taskCard: {
-    marginHorizontal: 12,
-    marginVertical: 4
+  taskItem: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0'
   },
-  completedTask: {
-    opacity: 0.7
-  },
-  compactCardContent: {
-    paddingVertical: 6,
-    paddingHorizontal: 10
-  },
-  taskHeader: {
+  taskRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start'
+    alignItems: 'center'
   },
   checkboxContainer: {
-    padding: 2,
-    marginRight: 4
+    marginRight: 16
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#d0d0d0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff'
+  },
+  checkboxCompleted: {
+    backgroundColor: '#8bc34a',
+    borderColor: '#8bc34a'
   },
   taskContent: {
     flex: 1,
-    marginLeft: 6
-  },
-  taskNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
+    marginRight: 12
   },
   taskName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 1,
-    flex: 1
-  },
-  attachmentIcon: {
-    marginLeft: 2,
-    marginTop: -2
-  },
-  microsoftIcon: {
-    marginLeft: 2,
-    marginTop: -2
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#2c2c2c',
+    marginBottom: 4
   },
   completedText: {
-    textDecorationLine: 'line-through',
-    color: '#999'
+    color: '#9e9e9e',
+    textDecorationLine: 'line-through'
   },
-  taskDescription: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-    marginTop: 1
+  dueDateText: {
+    fontSize: 13,
+    color: '#7cb342',
+    marginTop: 2
   },
-  taskMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginTop: 4,
-    alignItems: 'center'
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3
-  },
-  metaText: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500'
+  completedDueDate: {
+    color: '#b0b0b0',
+    textDecorationLine: 'line-through'
   },
   overdueText: {
-    color: '#d32f2f',
-    fontWeight: '600'
+    color: '#d32f2f'
   },
-  taskActions: {
-    flexDirection: 'row',
-    gap: 4,
-    marginLeft: 6
-  },
-  iconButton: {
-    padding: 4
+  priorityDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60
+    paddingVertical: 60,
+    backgroundColor: '#fff'
   },
   emptyText: {
     fontSize: 18,
@@ -706,9 +667,9 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 16,
-    bottom: 16,
-    backgroundColor: '#4caf50',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#8bc34a',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
