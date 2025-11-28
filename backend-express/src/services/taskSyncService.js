@@ -119,6 +119,14 @@ exports.createOrUpdateTask = async (userId, msTask) => {
       }
     });
 
+    // Process attachments - store as JSON string in imageUrl field
+    let imageUrl = null;
+    if (msTask.attachments && msTask.attachments.length > 0) {
+      // Store all attachments metadata as JSON
+      imageUrl = JSON.stringify(msTask.attachments);
+      console.log(`Storing ${msTask.attachments.length} attachment(s) for task "${msTask.name}"`);
+    }
+
     if (existingTask) {
       // Task exists for this user - UPDATE
       // Per user requirements: Microsoft always wins
@@ -132,7 +140,7 @@ exports.createOrUpdateTask = async (userId, msTask) => {
           dueDate: msTask.dueDate ? new Date(msTask.dueDate) : null,
           completed: msTask.completed,
           completedAt: msTask.completedAt,
-          // Keep existing imageUrl and reminderType
+          imageUrl: imageUrl,
           // microsoftTodoId stays the same
         }
       });
@@ -153,7 +161,7 @@ exports.createOrUpdateTask = async (userId, msTask) => {
           completedAt: msTask.completedAt,
           microsoftTodoId: msTask.microsoftTodoId,
           reminderType: msTask.reminderType,
-          imageUrl: msTask.imageUrl
+          imageUrl: imageUrl
         }
       });
 

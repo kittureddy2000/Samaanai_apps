@@ -222,8 +222,22 @@ exports.getAndTransformTasks = async (accessToken, excludeCompleted = true) => {
     // Get all tasks from the list (excluding completed by default)
     const msTasks = await exports.getTasksFromList(accessToken, listId, excludeCompleted);
 
-    // Transform each task to Samaanai format
-    const transformedTasks = msTasks.map(msTask => exports.transformMicrosoftTask(msTask));
+    // Transform each task to Samaanai format and fetch attachments
+    const transformedTasks = await Promise.all(msTasks.map(async (msTask) => {
+      const transformedTask = exports.transformMicrosoftTask(msTask);
+
+      // Fetch attachments for this task
+      const attachments = await exports.getTaskAttachments(accessToken, listId, msTask.id);
+      transformedTask.attachments = attachments;
+
+      // Log attachment fetching for debugging
+      if (attachments.length > 0) {
+        console.log(`Task "${msTask.title}" has ${attachments.length} attachment(s):`,
+          attachments.map(a => `${a.name} (${a.size} bytes)`).join(', '));
+      }
+
+      return transformedTask;
+    }));
 
     console.log(`Transformed ${transformedTasks.length} tasks from Microsoft To Do`);
 
@@ -235,11 +249,11 @@ exports.getAndTransformTasks = async (accessToken, excludeCompleted = true) => {
 };
 
 /**
- * Get task attachments (for future use - Phase 3)
+ * Get task attachments
  * @param {string} accessToken - Valid access token
  * @param {string} listId - To Do list ID
  * @param {string} taskId - Task ID
- * @returns {Promise<Array<Object>>}
+ * @returns {Promise<Array<Object>>} - Array of attachment objects with name, contentType, size
  */
 exports.getTaskAttachments = async (accessToken, listId, taskId) => {
   try {
@@ -252,7 +266,15 @@ exports.getTaskAttachments = async (accessToken, listId, taskId) => {
       return [];
     }
 
-    return data.value;
+    // Transform attachments to a simpler format
+    return data.value.map(attachment => ({
+      id: attachment.id,
+      name: attachment.name,
+      contentType: attachment.contentType,
+      size: attachment.size,
+      // Note: contentBytes is available but we're not storing the actual file content
+      // Just metadata for now
+    }));
   } catch (error) {
     console.error(`Error fetching attachments for task ${taskId}:`, error);
     return []; // Don't fail sync if attachments can't be fetched
