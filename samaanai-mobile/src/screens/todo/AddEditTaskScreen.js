@@ -322,21 +322,32 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
             <Text style={styles.label}>Due Date</Text>
             {Platform.OS === 'web' ? (
-              <TextInput
-                mode="outlined"
-                value={formData.dueDate}
-                onChangeText={(value) => setFormData({ ...formData, dueDate: value })}
-                placeholder="YYYY-MM-DD"
-                style={styles.input}
-                right={
-                  formData.dueDate ? (
-                    <TextInput.Icon
-                      icon="close"
-                      onPress={() => setFormData({ ...formData, dueDate: '' })}
-                    />
-                  ) : null
-                }
-              />
+              <View style={styles.webDatePickerContainer}>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    outline: 'none',
+                    backgroundColor: '#fff',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                {formData.dueDate && (
+                  <Button
+                    mode="text"
+                    onPress={() => setFormData({ ...formData, dueDate: '' })}
+                    style={styles.clearButton}
+                  >
+                    Clear Date
+                  </Button>
+                )}
+              </View>
             ) : (
               <>
                 <Button
@@ -533,6 +544,9 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
     marginTop: 8
+  },
+  webDatePickerContainer: {
+    marginBottom: 8
   },
   menuButton: {
     marginBottom: 16
