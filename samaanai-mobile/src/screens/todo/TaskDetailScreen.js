@@ -40,26 +40,41 @@ export default function TaskDetailScreen({ route, navigation }) {
   };
 
   const handleDelete = async () => {
-    Alert.alert(
-      'Delete Task',
-      'Are you sure you want to delete this task?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.deleteTask(taskId);
-              navigation.goBack();
-            } catch (err) {
-              console.error('Delete task error:', err);
-              Alert.alert('Error', 'Failed to delete task');
+    // For web, use window.confirm instead of Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete this task?');
+      if (confirmed) {
+        try {
+          await api.deleteTask(taskId);
+          navigation.goBack();
+        } catch (err) {
+          console.error('Delete task error:', err);
+          window.alert('Failed to delete task');
+        }
+      }
+    } else {
+      // For mobile, use Alert.alert
+      Alert.alert(
+        'Delete Task',
+        'Are you sure you want to delete this task?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.deleteTask(taskId);
+                navigation.goBack();
+              } catch (err) {
+                console.error('Delete task error:', err);
+                Alert.alert('Error', 'Failed to delete task');
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const isImageFile = (url) => {
