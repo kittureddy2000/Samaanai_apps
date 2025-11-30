@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import voiceService from '../services/voiceService';
 import { parseVoiceCommand, getSuggestedCommands } from '../services/voiceCommandParser';
 
-export default function VoiceInputButton({ onCommandParsed, commandType = 'all' }) {
+export default function VoiceInputButton({ onCommandParsed, commandType = 'all', size = 28, iconColor = '#1976d2', style }) {
   const [isListening, setIsListening] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -107,10 +107,10 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all' 
     <>
       <IconButton
         icon="microphone"
-        size={28}
+        size={size}
         onPress={startListening}
-        iconColor="#1976d2"
-        style={styles.micButton}
+        iconColor={iconColor}
+        style={[styles.micButton, style]}
       />
 
       <Portal>
