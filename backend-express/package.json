@@ -12,7 +12,14 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:pull": "prisma db pull",
-    "lint": "eslint src/**/*.js"
+    "lint": "eslint src/**/*.js",
+    "db:start": "docker-compose up -d && echo '✅ PostgreSQL started on localhost:5432'",
+    "db:stop": "docker-compose down && echo '⏹️  PostgreSQL stopped'",
+    "db:restart": "docker-compose restart && echo '🔄 PostgreSQL restarted'",
+    "db:reset": "docker-compose down -v && docker-compose up -d && npx prisma migrate dev && echo '🔥 Database reset complete'",
+    "db:logs": "docker-compose logs -f postgres",
+    "env:local": "cp .env.local .env && echo '✅ Switched to LOCAL environment'",
+    "setup:local": "npm run db:start && sleep 3 && npm run env:local && npx prisma generate && npx prisma migrate dev && echo '✅ Local development setup complete!'"
   },
   "keywords": [
     "samaanai",
@@ -25,6 +32,7 @@
   "dependencies": {
     "@azure/msal-node": "^3.8.3",
     "@prisma/client": "^6.16.3",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
