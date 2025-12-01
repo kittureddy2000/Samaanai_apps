@@ -1,10 +1,15 @@
 /**
  * Voice Command Parser
  * Parses voice commands into structured data for tasks and calories
+ * Uses Gemini LLM with fallback to pattern matching
  */
 
 import * as chrono from 'chrono-node';
 import { format } from 'date-fns';
+import geminiService from './geminiService';
+
+// Flag to enable/disable LLM parsing
+const USE_LLM_PARSING = true;
 
 /**
  * Parse task from voice command
@@ -180,9 +185,39 @@ export const parseExerciseCommand = (text) => {
 };
 
 /**
- * Main parser - tries all parsers and returns the best match
+ * Main parser - tries LLM first, then falls back to pattern matching
  */
-export const parseVoiceCommand = (text) => {
+export const parseVoiceCommand = async (text) => {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  // Try LLM parsing first if enabled
+  if (USE_LLM_PARSING) {
+    try {
+      const llmResult = await geminiService.parseVoiceCommand(text);
+
+      // If LLM parsed successfully and has good confidence, use it
+      if (llmResult && llmResult.type !== 'unknown' && llmResult.confidence >= 0.5) {
+        console.log('✅ LLM parsing successful:', llmResult);
+        return llmResult;
+      }
+
+      console.log('⚠️ LLM result low confidence, falling back to pattern matching');
+    } catch (error) {
+      console.warn('⚠️ LLM parsing failed, falling back to pattern matching:', error.message);
+    }
+  }
+
+  // Fallback to pattern matching
+  console.log('Using pattern matching fallback');
+  return parseVoiceCommandPattern(text);
+};
+
+/**
+ * Pattern-based parser (original logic) - used as fallback
+ */
+export const parseVoiceCommandPattern = (text) => {
   if (!text || typeof text !== 'string') {
     return null;
   }

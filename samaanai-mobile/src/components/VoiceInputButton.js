@@ -12,6 +12,7 @@ import { parseVoiceCommand, getSuggestedCommands } from '../services/voiceComman
 
 export default function VoiceInputButton({ onCommandParsed, commandType = 'all', size = 28, iconColor = '#1976d2', style }) {
   const [isListening, setIsListening] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [parsedCommand, setParsedCommand] = useState(null);
@@ -42,23 +43,31 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all',
       setIsListening(true);
 
       await voiceService.startListening(
-        (text) => {
+        async (text) => {
           // Speech recognition successful
           setTranscript(text);
           setIsListening(false);
+          setIsParsing(true);
 
-          // Parse the command
-          const parsed = parseVoiceCommand(text);
+          try {
+            // Parse the command (now async with LLM)
+            const parsed = await parseVoiceCommand(text);
 
-          if (parsed) {
-            // Filter by command type if specified
-            if (commandType === 'all' || parsed.type === commandType) {
-              setParsedCommand(parsed);
+            if (parsed) {
+              // Filter by command type if specified
+              if (commandType === 'all' || parsed.type === commandType) {
+                setParsedCommand(parsed);
+              } else {
+                setError(`Expected ${commandType} command, but got ${parsed.type}`);
+              }
             } else {
-              setError(`Expected ${commandType} command, but got ${parsed.type}`);
+              setError('Could not understand the command. Please try again.');
             }
-          } else {
-            setError('Could not understand the command. Please try again.');
+          } catch (parseError) {
+            console.error('Parse error:', parseError);
+            setError('Failed to parse command: ' + parseError.message);
+          } finally {
+            setIsParsing(false);
           }
         },
         (err) => {
@@ -90,6 +99,7 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all',
     setTranscript('');
     setParsedCommand(null);
     setError(null);
+    setIsParsing(false);
     if (isListening) {
       stopListening();
     }
@@ -144,7 +154,14 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all',
             </View>
           )}
 
-          {transcript && !isListening && (
+          {isParsing && (
+            <View style={styles.parsingContainer}>
+              <ActivityIndicator size="large" color="#1976d2" />
+              <Text style={styles.parsingText}>Processing with AI...</Text>
+            </View>
+          )}
+
+          {transcript && !isListening && !isParsing && (
             <View style={styles.resultContainer}>
               <Text style={styles.label}>You said:</Text>
               <Text style={styles.transcript}>"{transcript}"</Text>
@@ -321,6 +338,16 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     minWidth: 120
+  },
+  parsingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20
+  },
+  parsingText: {
+    fontSize: 16,
+    color: '#1976d2',
+    marginTop: 16,
+    fontWeight: '500'
   },
   suggestionsContainer: {
     marginTop: 8

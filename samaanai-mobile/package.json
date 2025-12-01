@@ -9,7 +9,11 @@
     "web": "expo start --web --host lan",
     "web:build": "expo export --platform web",
     "web:serve": "npx serve dist",
-    "build:all": "npm run web:build && eas build --platform all"
+    "build:all": "npm run web:build && eas build --platform all",
+    "env:local": "cp .env.local .env && echo '✅ Switched to LOCAL environment (http://localhost:8080)'",
+    "env:staging": "cp .env.staging .env && echo '✅ Switched to STAGING environment'",
+    "dev:local": "npm run env:local && npm start -- --clear",
+    "dev:staging": "npm run env:staging && npm start -- --clear"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
