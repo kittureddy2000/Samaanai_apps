@@ -110,13 +110,14 @@ router.get('/google/callback',
       let redirectUrl = process.env.FRONTEND_URL;
 
       if (!redirectUrl) {
-        // Fallback: determine from NODE_ENV or use mobile URL
+        // Fallback: Use Cloud Run URLs (custom domains may not be configured)
         const isProduction = process.env.NODE_ENV === 'production';
         redirectUrl = isProduction
           ? 'https://mobile.samaanai.com'
-          : 'https://mobile-staging.samaanai.com';
+          : 'https://samaanai-frontend-staging-hdp6ioqupa-uw.a.run.app';
       }
 
+      logger.info(`Redirecting Google OAuth callback to: ${redirectUrl}/profile?google_connected=true`);
       res.redirect(`${redirectUrl}/profile?google_connected=true`);
     } catch (error) {
       next(error);
