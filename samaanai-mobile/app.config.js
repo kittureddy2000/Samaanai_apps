@@ -74,7 +74,9 @@ module.exports = {
             enableShrinkResourcesInReleaseBuilds: true,
             usesCleartextTraffic: false,
             enableAndroidX: true,
-            useAndroidX: true
+            useAndroidX: true,
+            // Enable Jetifier to convert old Android Support libraries to AndroidX
+            enableJetifier: true
           }
         }
       ]
