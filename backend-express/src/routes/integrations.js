@@ -106,7 +106,18 @@ router.get('/google/callback',
       // For now, let's just return JSON if it's an API call, but this is a callback.
       // It needs to redirect.
 
-      const redirectUrl = process.env.FRONTEND_URL || 'https://samaanai-frontend-staging-hdp6ioqupa-uw.a.run.app';
+      // Determine redirect URL based on environment
+      let redirectUrl = process.env.FRONTEND_URL;
+
+      if (!redirectUrl) {
+        // Fallback: Use Cloud Run URLs (custom domains may not be configured)
+        const isProduction = process.env.NODE_ENV === 'production';
+        redirectUrl = isProduction
+          ? 'https://mobile.samaanai.com'
+          : 'https://samaanai-frontend-staging-hdp6ioqupa-uw.a.run.app';
+      }
+
+      logger.info(`Redirecting Google OAuth callback to: ${redirectUrl}/profile?google_connected=true`);
       res.redirect(`${redirectUrl}/profile?google_connected=true`);
     } catch (error) {
       next(error);
