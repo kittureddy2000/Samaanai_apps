@@ -14,9 +14,7 @@ class GeminiService {
   async parseVoiceCommand(voiceText) {
     try {
       // Call backend endpoint instead of Gemini directly
-      const response = await api.post('/voice/parse', {
-        transcript: voiceText
-      });
+      const response = await api.parseVoiceCommand(voiceText);
 
       if (!response.data.success) {
         // Backend returned error or wants us to fallback

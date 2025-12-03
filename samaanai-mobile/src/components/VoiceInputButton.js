@@ -10,7 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import voiceService from '../services/voiceService';
 import { parseVoiceCommand, getSuggestedCommands } from '../services/voiceCommandParser';
 
-export default function VoiceInputButton({ onCommandParsed, commandType = 'all', size = 28, iconColor = '#1976d2', style }) {
+export default function VoiceInputButton({ onCommandParsed, commandType = 'all', size = 28, iconColor = '#1976d2', style, autoSubmit = true }) {
   const [isListening, setIsListening] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -57,6 +57,15 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all',
               // Filter by command type if specified
               if (commandType === 'all' || parsed.type === commandType) {
                 setParsedCommand(parsed);
+
+                // Auto-submit if enabled
+                if (autoSubmit && onCommandParsed) {
+                  onCommandParsed(parsed, text);
+                  // Close modal after a brief delay to show what was parsed
+                  setTimeout(() => {
+                    handleClose();
+                  }, 1500);
+                }
               } else {
                 setError(`Expected ${commandType} command, but got ${parsed.type}`);
               }
@@ -194,22 +203,29 @@ export default function VoiceInputButton({ onCommandParsed, commandType = 'all',
                     </>
                   )}
 
-                  <View style={styles.buttonRow}>
-                    <Button
-                      mode="outlined"
-                      onPress={handleClose}
-                      style={styles.actionButton}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      mode="contained"
-                      onPress={handleConfirm}
-                      style={styles.actionButton}
-                    >
-                      Confirm
-                    </Button>
-                  </View>
+                  {autoSubmit ? (
+                    <View style={styles.successContainer}>
+                      <MaterialCommunityIcons name="check-circle" size={32} color="#4caf50" />
+                      <Text style={styles.successText}>Adding automatically...</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.buttonRow}>
+                      <Button
+                        mode="outlined"
+                        onPress={handleClose}
+                        style={styles.actionButton}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        mode="contained"
+                        onPress={handleConfirm}
+                        style={styles.actionButton}
+                      >
+                        Confirm
+                      </Button>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -363,5 +379,20 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
     fontStyle: 'italic'
+  },
+  successContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 8
+  },
+  successText: {
+    fontSize: 14,
+    color: '#4caf50',
+    marginLeft: 8,
+    fontWeight: '600'
   }
 });

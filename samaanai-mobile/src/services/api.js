@@ -231,7 +231,11 @@ export const api = {
     apiClient.delete('/integrations/google/disconnect'),
 
   getGoogleStatus: () =>
-    apiClient.get('/integrations/google/status')
+    apiClient.get('/integrations/google/status'),
+
+  // Voice Command Parsing
+  parseVoiceCommand: (transcript) =>
+    apiClient.post('/voice/parse', { transcript })
 };
 
 export default api;
