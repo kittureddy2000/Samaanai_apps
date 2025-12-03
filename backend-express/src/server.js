@@ -19,6 +19,7 @@ const todoRoutes = require('./routes/todo');
 const userRoutes = require('./routes/user');
 const emailTestRoutes = require('./routes/emailTest');
 const integrationRoutes = require('./routes/integrations');
+const voiceRoutes = require('./routes/voice');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -114,6 +115,7 @@ app.use('/api/v1/todo', todoRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/test', emailTestRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
+app.use('/api/v1/voice', voiceRoutes);
 
 // 404 handler
 app.use((req, res) => {

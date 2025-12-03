@@ -4,6 +4,7 @@ import { Text, Card, Title, Button, TextInput, ActivityIndicator, Snackbar } fro
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../../services/api';
 import { format, subDays, addDays } from 'date-fns';
+import VoiceInputButton from '../../components/VoiceInputButton';
 
 export default function DailyEntryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -106,6 +107,34 @@ export default function DailyEntryScreen({ navigation }) {
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleVoiceCommand = (parsedCommand, transcript) => {
+    if (parsedCommand.type === 'calorie') {
+      // Map meal type to form field
+      const mealTypeMap = {
+        'breakfast': 'breakfast',
+        'lunch': 'lunch',
+        'dinner': 'dinner',
+        'snack': 'snacks',
+        'snacks': 'snacks'
+      };
+
+      const fieldName = mealTypeMap[parsedCommand.mealType];
+      if (fieldName && parsedCommand.calories) {
+        setFormValues(prev => ({
+          ...prev,
+          [fieldName]: parsedCommand.calories.toString()
+        }));
+      }
+    } else if (parsedCommand.type === 'exercise') {
+      if (parsedCommand.caloriesBurned) {
+        setFormValues(prev => ({
+          ...prev,
+          exercise: parsedCommand.caloriesBurned.toString()
+        }));
+      }
+    }
   };
 
   const handleSubmit = async () => {
@@ -266,7 +295,13 @@ export default function DailyEntryScreen({ navigation }) {
       {/* Entry Form */}
       <Card style={styles.card}>
         <Card.Content>
-          <Title>Log Calories</Title>
+          <View style={styles.titleRow}>
+            <Title>Log Calories</Title>
+            <VoiceInputButton
+              onCommandParsed={handleVoiceCommand}
+              commandType="all"
+            />
+          </View>
 
           <Text style={styles.inputLabel}>Breakfast (cal)</Text>
           <TextInput
@@ -415,6 +450,12 @@ const styles = StyleSheet.create({
   card: {
     margin: 12,
     marginBottom: 6
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
   },
   statsGrid: {
     flexDirection: 'row',

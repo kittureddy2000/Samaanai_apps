@@ -6,6 +6,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../services/api';
 import { format, subDays, addDays, getDay } from 'date-fns';
+import VoiceInputButton from '../components/VoiceInputButton';
 
 const { width } = Dimensions.get('window');
 
@@ -90,6 +91,55 @@ export default function DashboardScreen({ navigation }) {
   const isCurrentWeek = () => {
     const currentWeekStart = getStartOfCurrentWeek();
     return format(selectedWeekStart, 'yyyy-MM-dd') === format(currentWeekStart, 'yyyy-MM-dd');
+  };
+
+  const handleVoiceCommand = async (parsedCommand, transcript) => {
+    try {
+      if (parsedCommand.type === 'task') {
+        // Create task
+        const taskData = {
+          name: parsedCommand.name,
+          description: parsedCommand.description || '',
+          dueDate: parsedCommand.dueDate || null,
+          reminderType: parsedCommand.reminderType || null,
+          imageUrl: null
+        };
+        await api.createTask(taskData);
+        fetchDashboardData(); // Refresh dashboard
+      } else if (parsedCommand.type === 'calorie') {
+        // Log calorie entry
+        const dateObj = new Date();
+        dateObj.setHours(0, 0, 0, 0);
+
+        if (parsedCommand.calories) {
+          const mealData = {
+            mealType: parsedCommand.mealType,
+            description: parsedCommand.description || parsedCommand.mealType.charAt(0).toUpperCase() + parsedCommand.mealType.slice(1),
+            calories: parsedCommand.calories,
+            date: dateObj
+          };
+          await api.createMeal(mealData);
+          fetchDashboardData(); // Refresh dashboard
+        }
+      } else if (parsedCommand.type === 'exercise') {
+        // Log exercise
+        const dateObj = new Date();
+        dateObj.setHours(0, 0, 0, 0);
+
+        if (parsedCommand.caloriesBurned) {
+          const exerciseData = {
+            description: parsedCommand.description || 'Exercise',
+            caloriesBurned: parsedCommand.caloriesBurned,
+            durationMinutes: parsedCommand.duration || 30,
+            date: dateObj
+          };
+          await api.addOrUpdateExerciseEntry(exerciseData);
+          fetchDashboardData(); // Refresh dashboard
+        }
+      }
+    } catch (error) {
+      console.error('Error processing voice command:', error);
+    }
   };
 
   const prepareChartData = () => {
@@ -377,6 +427,17 @@ export default function DashboardScreen({ navigation }) {
           )}
         </GlassCard>
       </ScrollView>
+
+      {/* Floating Voice Button */}
+      <View style={styles.fabContainer}>
+        <VoiceInputButton
+          onCommandParsed={handleVoiceCommand}
+          commandType="all"
+          size={32}
+          iconColor="#FFFFFF"
+          style={styles.fabButton}
+        />
+      </View>
     </View>
   );
 }
@@ -616,5 +677,24 @@ const styles = StyleSheet.create({
   emptyStateText: {
     color: '#757575',
     marginBottom: 4,
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#1976d2',
+    borderRadius: 32,
+    width: 64,
+    height: 64,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabButton: {
+    margin: 0,
   },
 });

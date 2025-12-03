@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../services/api';
 import { format, addDays, getDay } from 'date-fns';
+import VoiceInputButton from '../../components/VoiceInputButton';
 
 // Helper function to get end of current week (Sunday)
 const getEndOfWeek = () => {
@@ -254,6 +255,24 @@ export default function AddEditTaskScreen({ route, navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleVoiceCommand = (parsedCommand, transcript) => {
+    if (parsedCommand.type === 'task') {
+      // Populate form with voice command data
+      setFormData({
+        ...formData,
+        name: parsedCommand.name || formData.name,
+        description: parsedCommand.description || formData.description,
+        dueDate: parsedCommand.dueDate || formData.dueDate,
+        reminderType: parsedCommand.reminderType || formData.reminderType
+      });
+
+      // Update selected date if due date was parsed
+      if (parsedCommand.dueDate) {
+        setSelectedDate(new Date(parsedCommand.dueDate));
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -294,7 +313,10 @@ export default function AddEditTaskScreen({ route, navigation }) {
           onPress={() => navigation.goBack()}
         />
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Task' : 'Add Task'}</Text>
-        <View style={styles.headerSpacer} />
+        <VoiceInputButton
+          onCommandParsed={handleVoiceCommand}
+          commandType="task"
+        />
       </View>
 
       <ScrollView style={styles.content}>
@@ -322,21 +344,32 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
             <Text style={styles.label}>Due Date</Text>
             {Platform.OS === 'web' ? (
-              <TextInput
-                mode="outlined"
-                value={formData.dueDate}
-                onChangeText={(value) => setFormData({ ...formData, dueDate: value })}
-                placeholder="YYYY-MM-DD"
-                style={styles.input}
-                right={
-                  formData.dueDate ? (
-                    <TextInput.Icon
-                      icon="close"
-                      onPress={() => setFormData({ ...formData, dueDate: '' })}
-                    />
-                  ) : null
-                }
-              />
+              <View style={styles.webDatePickerContainer}>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    fontSize: '16px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    outline: 'none',
+                    backgroundColor: '#fff',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                {formData.dueDate && (
+                  <Button
+                    mode="text"
+                    onPress={() => setFormData({ ...formData, dueDate: '' })}
+                    style={styles.clearButton}
+                  >
+                    Clear Date
+                  </Button>
+                )}
+              </View>
             ) : (
               <>
                 <Button
@@ -533,6 +566,9 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
     marginTop: 8
+  },
+  webDatePickerContainer: {
+    marginBottom: 8
   },
   menuButton: {
     marginBottom: 16
