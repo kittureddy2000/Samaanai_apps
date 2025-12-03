@@ -145,7 +145,12 @@ class GoogleTasksService {
                         logger.debug(`Syncing task: ${gTask.title} (${gTask.id})`);
 
                         await prisma.task.upsert({
-                            where: { googleTaskId: gTask.id },
+                            where: {
+                                userId_googleTaskId: {
+                                    userId: userId,
+                                    googleTaskId: gTask.id
+                                }
+                            },
                             update: {
                                 name: gTask.title,
                                 description: gTask.notes || null,
