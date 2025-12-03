@@ -102,31 +102,47 @@ class GoogleTasksService {
 
     async syncTasks(userId) {
         try {
+            logger.info(`Starting Google Tasks sync for user ${userId}`);
+
             const auth = await this.getAuthenticatedClient(userId);
             const tasks = google.tasks({ version: 'v1', auth });
 
             // 1. Get all task lists
-            const { data: { items: taskLists } } = await tasks.tasklists.list();
+            logger.info(`Fetching task lists for user ${userId}`);
+            const taskListsResponse = await tasks.tasklists.list();
+            const taskLists = taskListsResponse.data.items;
+
+            logger.info(`Found ${taskLists?.length || 0} task lists for user ${userId}`);
 
             if (!taskLists || taskLists.length === 0) {
-                return { synced: 0, message: 'No task lists found' };
+                return { success: true, synced: 0, message: 'No task lists found' };
             }
 
             let totalSynced = 0;
 
             // 2. Iterate through each list and fetch tasks
             for (const list of taskLists) {
-                const { data: { items: googleTasks } } = await tasks.tasks.list({
+                logger.info(`Syncing tasks from list: ${list.title} (${list.id})`);
+
+                const tasksResponse = await tasks.tasks.list({
                     tasklist: list.id,
                     showCompleted: true,
                     showHidden: true
                 });
 
+                const googleTasks = tasksResponse.data.items;
+                logger.info(`Found ${googleTasks?.length || 0} tasks in list ${list.title}`);
+
                 if (googleTasks) {
                     for (const gTask of googleTasks) {
                         // Upsert task into Samaanai DB
                         // Only sync if it has a title
-                        if (!gTask.title) continue;
+                        if (!gTask.title) {
+                            logger.debug(`Skipping task ${gTask.id} - no title`);
+                            continue;
+                        }
+
+                        logger.debug(`Syncing task: ${gTask.title} (${gTask.id})`);
 
                         await prisma.task.upsert({
                             where: { googleTaskId: gTask.id },
@@ -153,9 +169,15 @@ class GoogleTasksService {
                 }
             }
 
+            logger.info(`Successfully synced ${totalSynced} tasks for user ${userId}`);
             return { success: true, synced: totalSynced };
         } catch (error) {
             logger.error(`Error syncing Google Tasks for user ${userId}:`, error);
+            logger.error('Error details:', {
+                message: error.message,
+                code: error.code,
+                errors: error.errors
+            });
             throw error;
         }
     }
