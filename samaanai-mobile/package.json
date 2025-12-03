@@ -28,6 +28,7 @@
     "date-fns": "^4.1.0",
     "expo": "54.0.22",
     "expo-auth-session": "^7.0.8",
+    "expo-build-properties": "^1.0.9",
     "expo-constants": "~18.0.10",
     "expo-device": "^8.0.9",
     "expo-document-picker": "^14.0.7",

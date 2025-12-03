@@ -65,7 +65,19 @@ module.exports = {
           cameraPermission: "The app needs access to your camera to take photos for tasks."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          android: {
+            enableProguardInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+            usesCleartextTraffic: false,
+            enableAndroidX: true,
+            useAndroidX: true
+          }
+        }
+      ]
     ]
   }
 };
