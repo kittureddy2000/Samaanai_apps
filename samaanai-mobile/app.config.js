@@ -74,12 +74,12 @@ module.exports = {
             enableShrinkResourcesInReleaseBuilds: true,
             usesCleartextTraffic: false,
             enableAndroidX: true,
-            useAndroidX: true,
-            // Enable Jetifier to convert old Android Support libraries to AndroidX
-            enableJetifier: true
+            useAndroidX: true
           }
         }
-      ]
+      ],
+      // Custom plugin to exclude old Android Support libraries that conflict with AndroidX
+      "./plugins/excludeAndroidSupport.js"
     ]
   }
 };
