@@ -182,12 +182,12 @@ exports.updateTask = async (req, res, next) => {
           }
         });
 
-        if (integration && task.googleTaskId) {
-          logger.info(`Pushing updated task "${task.name}" to Google Tasks for user ${req.user.id}`);
+        if (integration) {
+          logger.info(`Pushing ${task.googleTaskId ? 'updated' : 'new'} task "${task.name}" to Google Tasks for user ${req.user.id}`);
           await googleTasksService.pushTaskToGoogle(req.user.id, task);
         }
       } catch (googleError) {
-        logger.error(`Failed to push updated task to Google Tasks:`, googleError);
+        logger.error(`Failed to push task to Google Tasks:`, googleError);
       }
 
       res.json({ task });
