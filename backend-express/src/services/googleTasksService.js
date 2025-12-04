@@ -124,54 +124,67 @@ class GoogleTasksService {
             for (const list of taskLists) {
                 logger.info(`Syncing tasks from list: ${list.title} (${list.id})`);
 
-                const tasksResponse = await tasks.tasks.list({
-                    tasklist: list.id,
-                    showCompleted: true,
-                    showHidden: true
-                });
+                // Fetch all tasks with pagination support
+                let pageToken = null;
+                let listTaskCount = 0;
 
-                const googleTasks = tasksResponse.data.items;
-                logger.info(`Found ${googleTasks?.length || 0} tasks in list ${list.title}`);
+                do {
+                    const tasksResponse = await tasks.tasks.list({
+                        tasklist: list.id,
+                        showCompleted: true,
+                        showHidden: true,
+                        maxResults: 100, // Max allowed by API
+                        pageToken: pageToken
+                    });
 
-                if (googleTasks) {
-                    for (const gTask of googleTasks) {
-                        // Upsert task into Samaanai DB
-                        // Only sync if it has a title
-                        if (!gTask.title) {
-                            logger.debug(`Skipping task ${gTask.id} - no title`);
-                            continue;
-                        }
+                    const googleTasks = tasksResponse.data.items;
+                    pageToken = tasksResponse.data.nextPageToken;
 
-                        logger.debug(`Syncing task: ${gTask.title} (${gTask.id})`);
+                    logger.info(`Fetched ${googleTasks?.length || 0} tasks from list ${list.title} (page token: ${pageToken ? 'has more' : 'last page'})`);
 
-                        await prisma.task.upsert({
-                            where: {
-                                userId_googleTaskId: {
-                                    userId: userId,
-                                    googleTaskId: gTask.id
-                                }
-                            },
-                            update: {
-                                name: gTask.title,
-                                description: gTask.notes || null,
-                                completed: gTask.status === 'completed',
-                                completedAt: gTask.completed ? new Date(gTask.completed) : null,
-                                dueDate: gTask.due ? new Date(gTask.due) : null,
-                                updatedAt: new Date()
-                            },
-                            create: {
-                                userId: userId,
-                                googleTaskId: gTask.id,
-                                name: gTask.title,
-                                description: gTask.notes || null,
-                                completed: gTask.status === 'completed',
-                                completedAt: gTask.completed ? new Date(gTask.completed) : null,
-                                dueDate: gTask.due ? new Date(gTask.due) : null
+                    if (googleTasks) {
+                        for (const gTask of googleTasks) {
+                            // Upsert task into Samaanai DB
+                            // Only sync if it has a title
+                            if (!gTask.title) {
+                                logger.debug(`Skipping task ${gTask.id} - no title`);
+                                continue;
                             }
-                        });
-                        totalSynced++;
+
+                            logger.debug(`Syncing task: ${gTask.title} (${gTask.id})`);
+
+                            await prisma.task.upsert({
+                                where: {
+                                    userId_googleTaskId: {
+                                        userId: userId,
+                                        googleTaskId: gTask.id
+                                    }
+                                },
+                                update: {
+                                    name: gTask.title,
+                                    description: gTask.notes || null,
+                                    completed: gTask.status === 'completed',
+                                    completedAt: gTask.completed ? new Date(gTask.completed) : null,
+                                    dueDate: gTask.due ? new Date(gTask.due) : null,
+                                    updatedAt: new Date()
+                                },
+                                create: {
+                                    userId: userId,
+                                    googleTaskId: gTask.id,
+                                    name: gTask.title,
+                                    description: gTask.notes || null,
+                                    completed: gTask.status === 'completed',
+                                    completedAt: gTask.completed ? new Date(gTask.completed) : null,
+                                    dueDate: gTask.due ? new Date(gTask.due) : null
+                                }
+                            });
+                            totalSynced++;
+                            listTaskCount++;
+                        }
                     }
-                }
+                } while (pageToken); // Continue while there are more pages
+
+                logger.info(`Completed syncing ${listTaskCount} tasks from list ${list.title}`);
             }
 
             logger.info(`Successfully synced ${totalSynced} tasks for user ${userId}`);
