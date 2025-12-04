@@ -156,6 +156,7 @@ exports.updateTask = async (req, res, next) => {
 
       // Push updated task to Google Tasks if integrated AND task originated from Google
       try {
+        console.log(`[DEBUG] Checking Google Tasks integration for user ${req.user.id}`);
         const integration = await prisma.integration.findUnique({
           where: {
             userId_provider: {
@@ -165,13 +166,21 @@ exports.updateTask = async (req, res, next) => {
           }
         });
 
+        console.log(`[DEBUG] Integration found:`, !!integration, `googleTaskId:`, task.googleTaskId);
+
         if (integration && task.googleTaskId) {
+          console.log(`[DEBUG] Pushing updated task "${task.name}" to Google Tasks`);
           logger.info(`Pushing updated task "${task.name}" to Google Tasks for user ${req.user.id}`);
           await googleTasksService.pushTaskToGoogle(req.user.id, task);
+          console.log(`[DEBUG] Successfully pushed task to Google`);
         } else if (integration && !task.googleTaskId) {
+          console.log(`[DEBUG] Skipping Google Tasks push - no googleTaskId`);
           logger.debug(`Skipping Google Tasks push for task "${task.name}" - created in our app, not from Google`);
+        } else if (!integration) {
+          console.log(`[DEBUG] No Google Tasks integration found`);
         }
       } catch (googleError) {
+        console.error(`[DEBUG] Error pushing to Google:`, googleError);
         logger.error(`Failed to push task to Google Tasks:`, googleError);
       }
 
