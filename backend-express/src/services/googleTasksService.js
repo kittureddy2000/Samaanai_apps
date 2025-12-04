@@ -226,7 +226,9 @@ class GoogleTasksService {
                 title: task.name,
                 notes: task.description || undefined,
                 status: task.completed ? 'completed' : 'needsAction',
-                due: task.dueDate ? new Date(task.dueDate).toISOString() : undefined
+                due: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+                // Google Tasks requires 'completed' timestamp when status is 'completed'
+                ...(task.completed && { completed: task.completedAt ? new Date(task.completedAt).toISOString() : new Date().toISOString() })
             };
 
             let result;
