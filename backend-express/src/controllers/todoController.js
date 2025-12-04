@@ -60,25 +60,8 @@ exports.createTask = async (req, res, next) => {
       }
     });
 
-    // Check if user has Google Tasks integration and push task
-    try {
-      const integration = await prisma.integration.findUnique({
-        where: {
-          userId_provider: {
-            userId: req.user.id,
-            provider: 'google_tasks'
-          }
-        }
-      });
-
-      if (integration) {
-        logger.info(`Pushing new task "${task.name}" to Google Tasks for user ${req.user.id}`);
-        await googleTasksService.pushTaskToGoogle(req.user.id, task);
-      }
-    } catch (googleError) {
-      // Log but don't fail the request if Google push fails
-      logger.error(`Failed to push task to Google Tasks:`, googleError);
-    }
+    // Tasks created in our app stay local - they don't sync to Google Tasks
+    // Only tasks that originated from Google (via sync) will have two-way sync
 
     res.status(201).json({ task });
   } catch (error) {
@@ -171,7 +154,7 @@ exports.updateTask = async (req, res, next) => {
         data: updateData
       });
 
-      // Push updated task to Google Tasks if integrated
+      // Push updated task to Google Tasks if integrated AND task originated from Google
       try {
         const integration = await prisma.integration.findUnique({
           where: {
@@ -182,9 +165,11 @@ exports.updateTask = async (req, res, next) => {
           }
         });
 
-        if (integration) {
-          logger.info(`Pushing ${task.googleTaskId ? 'updated' : 'new'} task "${task.name}" to Google Tasks for user ${req.user.id}`);
+        if (integration && task.googleTaskId) {
+          logger.info(`Pushing updated task "${task.name}" to Google Tasks for user ${req.user.id}`);
           await googleTasksService.pushTaskToGoogle(req.user.id, task);
+        } else if (integration && !task.googleTaskId) {
+          logger.debug(`Skipping Google Tasks push for task "${task.name}" - created in our app, not from Google`);
         }
       } catch (googleError) {
         logger.error(`Failed to push task to Google Tasks:`, googleError);
