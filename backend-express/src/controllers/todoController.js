@@ -1,4 +1,6 @@
 const { prisma } = require('../config/database');
+const googleTasksService = require('../services/googleTasksService');
+const logger = require('../config/logger');
 
 exports.getTasks = async (req, res, next) => {
   try {
@@ -57,6 +59,26 @@ exports.createTask = async (req, res, next) => {
         imageUrl
       }
     });
+
+    // Check if user has Google Tasks integration and push task
+    try {
+      const integration = await prisma.integration.findUnique({
+        where: {
+          userId_provider: {
+            userId: req.user.id,
+            provider: 'google_tasks'
+          }
+        }
+      });
+
+      if (integration) {
+        logger.info(`Pushing new task "${task.name}" to Google Tasks for user ${req.user.id}`);
+        await googleTasksService.pushTaskToGoogle(req.user.id, task);
+      }
+    } catch (googleError) {
+      // Log but don't fail the request if Google push fails
+      logger.error(`Failed to push task to Google Tasks:`, googleError);
+    }
 
     res.status(201).json({ task });
   } catch (error) {
@@ -149,6 +171,25 @@ exports.updateTask = async (req, res, next) => {
         data: updateData
       });
 
+      // Push updated task to Google Tasks if integrated
+      try {
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        if (integration && task.googleTaskId) {
+          logger.info(`Pushing updated task "${task.name}" to Google Tasks for user ${req.user.id}`);
+          await googleTasksService.pushTaskToGoogle(req.user.id, task);
+        }
+      } catch (googleError) {
+        logger.error(`Failed to push updated task to Google Tasks:`, googleError);
+      }
+
       res.json({ task });
     }
   } catch (error) {
@@ -168,6 +209,27 @@ exports.deleteTask = async (req, res, next) => {
 
     if (!existingTask) {
       return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Delete from Google Tasks if integrated and has googleTaskId
+    if (existingTask.googleTaskId) {
+      try {
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        if (integration) {
+          logger.info(`Deleting task "${existingTask.name}" from Google Tasks for user ${req.user.id}`);
+          await googleTasksService.deleteTaskFromGoogle(req.user.id, existingTask.googleTaskId);
+        }
+      } catch (googleError) {
+        logger.error(`Failed to delete task from Google Tasks:`, googleError);
+      }
     }
 
     await prisma.task.delete({
