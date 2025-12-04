@@ -233,11 +233,13 @@ class GoogleTasksService {
             if (task.googleTaskId) {
                 // Update existing Google Task
                 logger.info(`Updating Google Task ${task.googleTaskId} for user ${userId}`);
-                result = await tasks.tasks.update({
+                console.log(`[DEBUG] Calling tasks.tasks.patch with tasklist: ${taskListId}, task: ${task.googleTaskId}`);
+                result = await tasks.tasks.patch({
                     tasklist: taskListId,
                     task: task.googleTaskId,
-                    resource: googleTask
+                    requestBody: googleTask
                 });
+                console.log(`[DEBUG] Patch result:`, result.data);
             } else {
                 // Create new Google Task
                 logger.info(`Creating new Google Task for task "${task.name}" (user ${userId})`);
