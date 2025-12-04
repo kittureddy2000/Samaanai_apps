@@ -236,7 +236,7 @@ class GoogleTasksService {
                 result = await tasks.tasks.update({
                     tasklist: taskListId,
                     task: task.googleTaskId,
-                    requestBody: googleTask
+                    resource: googleTask
                 });
             } else {
                 // Create new Google Task
