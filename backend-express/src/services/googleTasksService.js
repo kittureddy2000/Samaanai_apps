@@ -231,20 +231,20 @@ class GoogleTasksService {
                 ...(task.completed && { completed: task.completedAt ? new Date(task.completedAt).toISOString() : new Date().toISOString() })
             };
 
-            console.log(`[DEBUG] Task data - completed: ${task.completed}, completedAt: ${task.completedAt}`);
-            console.log(`[DEBUG] Google Task object:`, JSON.stringify(googleTask));
+            logger.info(`[PUSH] Task data - completed: ${task.completed}, completedAt: ${task.completedAt}`);
+            logger.info(`[PUSH] Google Task object: ${JSON.stringify(googleTask)}`);
 
             let result;
             if (task.googleTaskId) {
                 // Update existing Google Task
                 logger.info(`Updating Google Task ${task.googleTaskId} for user ${userId}`);
-                console.log(`[DEBUG] Calling tasks.tasks.patch with tasklist: ${taskListId}, task: ${task.googleTaskId}`);
+                logger.info(`[PUSH] Calling tasks.tasks.patch with tasklist: ${taskListId}, task: ${task.googleTaskId}`);
                 result = await tasks.tasks.patch({
                     tasklist: taskListId,
                     task: task.googleTaskId,
                     requestBody: googleTask
                 });
-                console.log(`[DEBUG] Patch result - status:`, result.data.status, `completed:`, result.data.completed);
+                logger.info(`[PUSH] Patch result - status: ${result.data.status}, completed: ${result.data.completed}`);
             } else {
                 // Create new Google Task
                 logger.info(`Creating new Google Task for task "${task.name}" (user ${userId})`);
