@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 const { prisma } = require('../config/database');
 const logger = require('../config/logger');
 
-const SCOPES = ['https://www.googleapis.com/auth/tasks.readonly'];
+const SCOPES = ['https://www.googleapis.com/auth/tasks'];
 
 class GoogleTasksService {
     constructor() {
@@ -196,6 +196,112 @@ class GoogleTasksService {
                 code: error.code,
                 errors: error.errors
             });
+            throw error;
+        }
+    }
+
+    /**
+     * Push a task to Google Tasks (create or update)
+     * @param {string} userId - User ID
+     * @param {object} task - Task from our database
+     * @returns {Promise<object>} Updated task with Google Task ID
+     */
+    async pushTaskToGoogle(userId, task) {
+        try {
+            const auth = await this.getAuthenticatedClient(userId);
+            const tasks = google.tasks({ version: 'v1', auth });
+
+            // Get or create the default task list
+            const taskListsResponse = await tasks.tasklists.list();
+            const taskLists = taskListsResponse.data.items;
+
+            if (!taskLists || taskLists.length === 0) {
+                throw new Error('No task lists found for user');
+            }
+
+            // Use the first list (default list)
+            const taskListId = taskLists[0].id;
+
+            const googleTask = {
+                title: task.name,
+                notes: task.description || undefined,
+                status: task.completed ? 'completed' : 'needsAction',
+                due: task.dueDate ? new Date(task.dueDate).toISOString() : undefined,
+                // Google Tasks requires 'completed' timestamp when status is 'completed'
+                ...(task.completed && { completed: task.completedAt ? new Date(task.completedAt).toISOString() : new Date().toISOString() })
+            };
+
+            logger.info(`[PUSH] Task data - completed: ${task.completed}, completedAt: ${task.completedAt}`);
+            logger.info(`[PUSH] Google Task object: ${JSON.stringify(googleTask)}`);
+
+            let result;
+            if (task.googleTaskId) {
+                // Update existing Google Task
+                logger.info(`Updating Google Task ${task.googleTaskId} for user ${userId}`);
+                logger.info(`[PUSH] Calling tasks.tasks.patch with tasklist: ${taskListId}, task: ${task.googleTaskId}`);
+                result = await tasks.tasks.patch({
+                    tasklist: taskListId,
+                    task: task.googleTaskId,
+                    requestBody: googleTask
+                });
+                logger.info(`[PUSH] Patch result - status: ${result.data.status}, completed: ${result.data.completed}`);
+            } else {
+                // Create new Google Task
+                logger.info(`Creating new Google Task for task "${task.name}" (user ${userId})`);
+                result = await tasks.tasks.insert({
+                    tasklist: taskListId,
+                    requestBody: googleTask
+                });
+
+                // Update our database with the new Google Task ID
+                await prisma.task.update({
+                    where: { id: task.id },
+                    data: { googleTaskId: result.data.id }
+                });
+            }
+
+            logger.info(`Successfully pushed task to Google Tasks: ${result.data.id}`);
+            return { success: true, googleTaskId: result.data.id };
+        } catch (error) {
+            logger.error(`Error pushing task to Google Tasks for user ${userId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a task from Google Tasks
+     * @param {string} userId - User ID
+     * @param {string} googleTaskId - Google Task ID to delete
+     * @returns {Promise<object>} Success status
+     */
+    async deleteTaskFromGoogle(userId, googleTaskId) {
+        try {
+            const auth = await this.getAuthenticatedClient(userId);
+            const tasks = google.tasks({ version: 'v1', auth });
+
+            // Get all task lists to find which list contains this task
+            const taskListsResponse = await tasks.tasklists.list();
+            const taskLists = taskListsResponse.data.items;
+
+            // Try to delete from each list (Google Tasks requires the list ID)
+            for (const list of taskLists) {
+                try {
+                    await tasks.tasks.delete({
+                        tasklist: list.id,
+                        task: googleTaskId
+                    });
+                    logger.info(`Deleted Google Task ${googleTaskId} from list ${list.title}`);
+                    return { success: true };
+                } catch (error) {
+                    // Task not in this list, try next one
+                    continue;
+                }
+            }
+
+            logger.warn(`Could not find Google Task ${googleTaskId} in any list`);
+            return { success: false, message: 'Task not found in any list' };
+        } catch (error) {
+            logger.error(`Error deleting task from Google Tasks for user ${userId}:`, error);
             throw error;
         }
     }

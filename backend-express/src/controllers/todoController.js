@@ -1,4 +1,6 @@
 const { prisma } = require('../config/database');
+const googleTasksService = require('../services/googleTasksService');
+const logger = require('../config/logger');
 
 exports.getTasks = async (req, res, next) => {
   try {
@@ -57,6 +59,9 @@ exports.createTask = async (req, res, next) => {
         imageUrl
       }
     });
+
+    // Tasks created in our app stay local - they don't sync to Google Tasks
+    // Only tasks that originated from Google (via sync) will have two-way sync
 
     res.status(201).json({ task });
   } catch (error) {
@@ -149,6 +154,33 @@ exports.updateTask = async (req, res, next) => {
         data: updateData
       });
 
+      // Push updated task to Google Tasks if integrated AND task originated from Google
+      try {
+        logger.info(`[SYNC] Checking Google Tasks integration for user ${req.user.id}`);
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        logger.info(`[SYNC] Integration found: ${!!integration}, googleTaskId: ${task.googleTaskId}`);
+
+        if (integration && task.googleTaskId) {
+          logger.info(`[SYNC] Pushing updated task "${task.name}" (completed: ${task.completed}) to Google Tasks for user ${req.user.id}`);
+          await googleTasksService.pushTaskToGoogle(req.user.id, task);
+          logger.info(`[SYNC] Successfully pushed task to Google`);
+        } else if (integration && !task.googleTaskId) {
+          logger.debug(`[SYNC] Skipping Google Tasks push - no googleTaskId`);
+        } else if (!integration) {
+          logger.debug(`[SYNC] No Google Tasks integration found`);
+        }
+      } catch (googleError) {
+        logger.error(`[SYNC] Error pushing to Google:`, googleError);
+      }
+
       res.json({ task });
     }
   } catch (error) {
@@ -168,6 +200,27 @@ exports.deleteTask = async (req, res, next) => {
 
     if (!existingTask) {
       return res.status(404).json({ error: 'Task not found' });
+    }
+
+    // Delete from Google Tasks if integrated and has googleTaskId
+    if (existingTask.googleTaskId) {
+      try {
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        if (integration) {
+          logger.info(`Deleting task "${existingTask.name}" from Google Tasks for user ${req.user.id}`);
+          await googleTasksService.deleteTaskFromGoogle(req.user.id, existingTask.googleTaskId);
+        }
+      } catch (googleError) {
+        logger.error(`Failed to delete task from Google Tasks:`, googleError);
+      }
     }
 
     await prisma.task.delete({
@@ -274,6 +327,33 @@ exports.toggleTaskCompletion = async (req, res, next) => {
           completedAt: !existingTask.completed ? new Date() : null
         }
       });
+
+      // Push updated task to Google Tasks if integrated AND task originated from Google
+      try {
+        logger.info(`[SYNC] Checking Google Tasks integration for user ${req.user.id}`);
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        logger.info(`[SYNC] Integration found: ${!!integration}, googleTaskId: ${task.googleTaskId}`);
+
+        if (integration && task.googleTaskId) {
+          logger.info(`[SYNC] Pushing toggled task "${task.name}" (completed: ${task.completed}) to Google Tasks for user ${req.user.id}`);
+          await googleTasksService.pushTaskToGoogle(req.user.id, task);
+          logger.info(`[SYNC] Successfully pushed task to Google`);
+        } else if (integration && !task.googleTaskId) {
+          logger.debug(`[SYNC] Skipping Google Tasks push - no googleTaskId`);
+        } else if (!integration) {
+          logger.debug(`[SYNC] No Google Tasks integration found`);
+        }
+      } catch (googleError) {
+        logger.error(`[SYNC] Error pushing to Google:`, googleError);
+      }
 
       res.json({ task });
     }
