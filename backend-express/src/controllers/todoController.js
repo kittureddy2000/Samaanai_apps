@@ -328,6 +328,33 @@ exports.toggleTaskCompletion = async (req, res, next) => {
         }
       });
 
+      // Push updated task to Google Tasks if integrated AND task originated from Google
+      try {
+        logger.info(`[SYNC] Checking Google Tasks integration for user ${req.user.id}`);
+        const integration = await prisma.integration.findUnique({
+          where: {
+            userId_provider: {
+              userId: req.user.id,
+              provider: 'google_tasks'
+            }
+          }
+        });
+
+        logger.info(`[SYNC] Integration found: ${!!integration}, googleTaskId: ${task.googleTaskId}`);
+
+        if (integration && task.googleTaskId) {
+          logger.info(`[SYNC] Pushing toggled task "${task.name}" (completed: ${task.completed}) to Google Tasks for user ${req.user.id}`);
+          await googleTasksService.pushTaskToGoogle(req.user.id, task);
+          logger.info(`[SYNC] Successfully pushed task to Google`);
+        } else if (integration && !task.googleTaskId) {
+          logger.debug(`[SYNC] Skipping Google Tasks push - no googleTaskId`);
+        } else if (!integration) {
+          logger.debug(`[SYNC] No Google Tasks integration found`);
+        }
+      } catch (googleError) {
+        logger.error(`[SYNC] Error pushing to Google:`, googleError);
+      }
+
       res.json({ task });
     }
   } catch (error) {
