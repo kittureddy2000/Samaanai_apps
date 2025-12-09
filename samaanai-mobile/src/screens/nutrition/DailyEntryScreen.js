@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
-import { Text, Card, Title, Button, TextInput, ActivityIndicator, Snackbar } from 'react-native-paper';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, Button, ActivityIndicator, Snackbar, FAB, Surface } from 'react-native-paper';
 import { api } from '../../services/api';
 import { format, subDays, addDays } from 'date-fns';
+import { colors, spacing } from '../../theme';
+import { DateNavigator, StatCard, StatCardRow } from '../../components/common';
+import { MealInput, MealInputGroup } from '../../components/forms';
 import VoiceInputButton from '../../components/VoiceInputButton';
 
 export default function DailyEntryScreen({ navigation }) {
@@ -14,8 +16,7 @@ export default function DailyEntryScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarType, setSnackbarType] = useState('success'); // 'success' or 'error'
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [snackbarType, setSnackbarType] = useState('success');
 
   const [formValues, setFormValues] = useState({
     breakfast: '',
@@ -23,8 +24,22 @@ export default function DailyEntryScreen({ navigation }) {
     dinner: '',
     snacks: '',
     exercise: '',
-    weight: ''
+    weight: '',
   });
+
+  // Calculate live summary from form values
+  const liveSummary = useMemo(() => {
+    const food =
+      (parseInt(formValues.breakfast) || 0) +
+      (parseInt(formValues.lunch) || 0) +
+      (parseInt(formValues.dinner) || 0) +
+      (parseInt(formValues.snacks) || 0);
+    const exercise = parseInt(formValues.exercise) || 0;
+    const net = food - exercise;
+    const goal = dailyReport?.summary?.dailyGoal || 2000;
+
+    return { food, exercise, net, goal };
+  }, [formValues, dailyReport]);
 
   const fetchDailyReport = async () => {
     try {
@@ -39,30 +54,30 @@ export default function DailyEntryScreen({ navigation }) {
 
       // Populate form with existing values
       const newFormValues = {
-        breakfast: data.meals?.find(m => m.mealType === 'breakfast')?.calories?.toString() || '',
-        lunch: data.meals?.find(m => m.mealType === 'lunch')?.calories?.toString() || '',
-        dinner: data.meals?.find(m => m.mealType === 'dinner')?.calories?.toString() || '',
-        snacks: data.meals?.find(m => m.mealType === 'snacks')?.calories?.toString() || '',
+        breakfast: data.meals?.find((m) => m.mealType === 'breakfast')?.calories?.toString() || '',
+        lunch: data.meals?.find((m) => m.mealType === 'lunch')?.calories?.toString() || '',
+        dinner: data.meals?.find((m) => m.mealType === 'dinner')?.calories?.toString() || '',
+        snacks: data.meals?.find((m) => m.mealType === 'snacks')?.calories?.toString() || '',
         exercise: data.exercise?.caloriesBurned?.toString() || '',
-        weight: ''
+        weight: '',
       };
-      setFormValues(newFormValues);
 
       // Fetch weight for the day
       try {
         const weightResponse = await api.getWeightHistory();
         const weights = weightResponse.data.entries || [];
-        const todayWeight = weights.find(w => {
+        const todayWeight = weights.find((w) => {
           const weightDate = new Date(w.date);
           return weightDate.toDateString() === selectedDate.toDateString();
         });
         if (todayWeight) {
           newFormValues.weight = todayWeight.weight.toString();
-          setFormValues(newFormValues);
         }
       } catch (err) {
         console.log('No weight data');
       }
+
+      setFormValues(newFormValues);
     } catch (err) {
       console.error('Daily report error:', err);
       setError(err.response?.data?.error || 'Failed to load daily data');
@@ -75,63 +90,35 @@ export default function DailyEntryScreen({ navigation }) {
     fetchDailyReport();
   }, [selectedDate]);
 
-  const handlePreviousDay = () => {
-    setSelectedDate(prevDate => subDays(prevDate, 1));
-  };
-
-  const handleNextDay = () => {
-    setSelectedDate(prevDate => addDays(prevDate, 1));
-  };
-
-  const handleDatePress = () => {
-    setShowDatePicker(true);
-  };
-
-  const handleDateChange = (event, date) => {
-    // On iOS, the picker stays open until dismissed
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-
-    if (date) {
-      setSelectedDate(date);
-    }
-  };
-
-  const handleDatePickerClose = () => {
-    setShowDatePicker(false);
-  };
-
   const handleInputChange = (field, value) => {
-    setFormValues(prev => ({
+    setFormValues((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
-  const handleVoiceCommand = (parsedCommand, transcript) => {
+  const handleVoiceCommand = (parsedCommand) => {
     if (parsedCommand.type === 'calorie') {
-      // Map meal type to form field
       const mealTypeMap = {
-        'breakfast': 'breakfast',
-        'lunch': 'lunch',
-        'dinner': 'dinner',
-        'snack': 'snacks',
-        'snacks': 'snacks'
+        breakfast: 'breakfast',
+        lunch: 'lunch',
+        dinner: 'dinner',
+        snack: 'snacks',
+        snacks: 'snacks',
       };
 
       const fieldName = mealTypeMap[parsedCommand.mealType];
       if (fieldName && parsedCommand.calories) {
-        setFormValues(prev => ({
+        setFormValues((prev) => ({
           ...prev,
-          [fieldName]: parsedCommand.calories.toString()
+          [fieldName]: parsedCommand.calories.toString(),
         }));
       }
     } else if (parsedCommand.type === 'exercise') {
       if (parsedCommand.caloriesBurned) {
-        setFormValues(prev => ({
+        setFormValues((prev) => ({
           ...prev,
-          exercise: parsedCommand.caloriesBurned.toString()
+          exercise: parsedCommand.caloriesBurned.toString(),
         }));
       }
     }
@@ -154,7 +141,7 @@ export default function DailyEntryScreen({ navigation }) {
 
       // Save meals
       for (const meal of mealTypes) {
-        const existingEntry = dailyReport?.meals?.find(m => m.mealType === meal.key);
+        const existingEntry = dailyReport?.meals?.find((m) => m.mealType === meal.key);
         const calories = formValues[meal.key];
 
         if (calories && calories !== '0' && calories !== '') {
@@ -207,14 +194,12 @@ export default function DailyEntryScreen({ navigation }) {
       setSnackbarVisible(true);
       await fetchDailyReport();
 
-      // Navigate to Dashboard after a short delay to show the snackbar
       setTimeout(() => {
         navigation.navigate('Dashboard');
       }, 1500);
     } catch (err) {
       console.error('Error submitting entries:', err);
-      setError('Failed to save entries. Please try again.');
-      setSnackbarMessage(err.response?.data?.error || 'Failed to save entries. Please try again.');
+      setSnackbarMessage(err.response?.data?.error || 'Failed to save entries');
       setSnackbarType('error');
       setSnackbarVisible(true);
     } finally {
@@ -222,283 +207,259 @@ export default function DailyEntryScreen({ navigation }) {
     }
   };
 
-  const calculateNetCalories = () => {
-    if (!dailyReport || !dailyReport.summary) return 0;
-    return dailyReport.summary.netCalories || 0;
-  };
-
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading daily data...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Date Navigation */}
-      <View style={styles.dateSelector}>
-        <Button mode="outlined" onPress={handlePreviousDay}>←</Button>
-        <TouchableOpacity onPress={handleDatePress} style={styles.dateTouchable}>
-          <Text style={styles.dateText}>{format(selectedDate, 'MMM d, yyyy')}</Text>
-        </TouchableOpacity>
-        <Button mode="outlined" onPress={handleNextDay}>→</Button>
-      </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* Date Navigator */}
+        <DateNavigator
+          date={selectedDate}
+          onDateChange={setSelectedDate}
+          showPicker={true}
+          allowFuture={false}
+        />
 
-      {/* Date Picker */}
-      {showDatePicker && (
-        <>
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            maximumDate={new Date()} // Can't select future dates
-          />
-          {Platform.OS === 'ios' && (
-            <View style={styles.iosPickerButtons}>
-              <Button onPress={handleDatePickerClose}>Done</Button>
-            </View>
-          )}
-        </>
-      )}
+        {/* Error Banner */}
+        {error && (
+          <Surface style={styles.errorBanner} elevation={0}>
+            <Text style={styles.errorText}>{error}</Text>
+          </Surface>
+        )}
 
-      {error && (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Summary Stats */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Today's Summary</Title>
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{dailyReport?.summary?.caloriesConsumed || 0}</Text>
-              <Text style={styles.statLabel}>Food</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{dailyReport?.summary?.caloriesBurned || 0}</Text>
-              <Text style={styles.statLabel}>Exercise</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{calculateNetCalories()}</Text>
-              <Text style={styles.statLabel}>Net</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Entry Form */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <View style={styles.titleRow}>
-            <Title>Log Calories</Title>
-            <VoiceInputButton
-              onCommandParsed={handleVoiceCommand}
-              commandType="all"
+        {/* Live Summary */}
+        <View style={styles.section}>
+          <StatCardRow>
+            <StatCard
+              label="Food"
+              value={liveSummary.food}
+              unit="cal"
+              icon="food"
+              iconColor={colors.caloriesConsumed}
+              valueColor={colors.caloriesConsumed}
+              variant="compact"
             />
-          </View>
+            <StatCard
+              label="Exercise"
+              value={liveSummary.exercise}
+              unit="cal"
+              icon="run"
+              iconColor={colors.caloriesBurned}
+              valueColor={colors.caloriesBurned}
+              variant="compact"
+            />
+            <StatCard
+              label="Net"
+              value={liveSummary.net}
+              unit="cal"
+              icon="calculator"
+              iconColor={colors.netCalories}
+              valueColor={liveSummary.net > liveSummary.goal ? colors.surplus : colors.deficit}
+              variant="compact"
+            />
+          </StatCardRow>
+          <Text style={styles.goalHint}>
+            Goal: {liveSummary.goal} cal | {liveSummary.net > liveSummary.goal ? 'Over by ' : 'Under by '}
+            {Math.abs(liveSummary.goal - liveSummary.net)} cal
+          </Text>
+        </View>
 
-          <Text style={styles.inputLabel}>Breakfast (cal)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="numeric"
-            value={formValues.breakfast}
-            onChangeText={(value) => handleInputChange('breakfast', value)}
-            placeholder="0"
-            style={styles.input}
-          />
+        {/* Meals Section */}
+        <View style={styles.section}>
+          <MealInputGroup title="Meals">
+            <MealInput
+              mealType="breakfast"
+              value={formValues.breakfast}
+              onChangeText={(value) => handleInputChange('breakfast', value)}
+            />
+            <MealInput
+              mealType="lunch"
+              value={formValues.lunch}
+              onChangeText={(value) => handleInputChange('lunch', value)}
+            />
+            <MealInput
+              mealType="dinner"
+              value={formValues.dinner}
+              onChangeText={(value) => handleInputChange('dinner', value)}
+            />
+            <MealInput
+              mealType="snacks"
+              value={formValues.snacks}
+              onChangeText={(value) => handleInputChange('snacks', value)}
+            />
+          </MealInputGroup>
+        </View>
 
-          <Text style={styles.inputLabel}>Lunch (cal)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="numeric"
-            value={formValues.lunch}
-            onChangeText={(value) => handleInputChange('lunch', value)}
-            placeholder="0"
-            style={styles.input}
-          />
+        {/* Activity Section */}
+        <View style={styles.section}>
+          <MealInputGroup title="Activity">
+            <MealInput
+              mealType="exercise"
+              value={formValues.exercise}
+              onChangeText={(value) => handleInputChange('exercise', value)}
+            />
+          </MealInputGroup>
+        </View>
 
-          <Text style={styles.inputLabel}>Dinner (cal)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="numeric"
-            value={formValues.dinner}
-            onChangeText={(value) => handleInputChange('dinner', value)}
-            placeholder="0"
-            style={styles.input}
-          />
+        {/* Weight Section */}
+        <View style={styles.section}>
+          <MealInputGroup title="Measurement">
+            <MealInput
+              mealType="weight"
+              value={formValues.weight}
+              onChangeText={(value) => handleInputChange('weight', value)}
+            />
+          </MealInputGroup>
+        </View>
 
-          <Text style={styles.inputLabel}>Snacks (cal)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="numeric"
-            value={formValues.snacks}
-            onChangeText={(value) => handleInputChange('snacks', value)}
-            placeholder="0"
-            style={styles.input}
-          />
-
-          <Text style={styles.inputLabel}>Exercise (cal burned)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="numeric"
-            value={formValues.exercise}
-            onChangeText={(value) => handleInputChange('exercise', value)}
-            placeholder="0"
-            style={styles.input}
-          />
-
-          <Text style={styles.inputLabel}>Weight (kg)</Text>
-          <TextInput
-            mode="outlined"
-            keyboardType="decimal-pad"
-            value={formValues.weight}
-            onChangeText={(value) => handleInputChange('weight', value)}
-            placeholder="0.0"
-            style={styles.input}
-          />
-
+        {/* Save Button */}
+        <View style={styles.section}>
           <Button
             mode="contained"
             onPress={handleSubmit}
             loading={saving}
             disabled={saving || loading}
             style={styles.submitButton}
+            contentStyle={styles.submitButtonContent}
+            labelStyle={styles.submitButtonLabel}
           >
-            {saving ? 'Saving...' : 'Save All Entries'}
+            {saving ? 'Saving...' : 'Save Entry'}
           </Button>
-        </Card.Content>
-      </Card>
+        </View>
+
+        {/* Bottom spacing */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+
+      {/* Voice Input FAB */}
+      <FAB
+        icon="microphone"
+        style={styles.voiceFab}
+        onPress={() => {}}
+        color={colors.white}
+        customSize={56}
+      />
+      <View style={styles.voiceButtonWrapper}>
+        <VoiceInputButton
+          onCommandParsed={handleVoiceCommand}
+          commandType="all"
+          size={56}
+          iconColor={colors.white}
+          style={styles.voiceButton}
+        />
+      </View>
 
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         action={{
-          label: 'Dismiss',
+          label: 'OK',
           onPress: () => setSnackbarVisible(false),
         }}
-        style={[
-          styles.snackbar,
-          snackbarType === 'error' ? styles.snackbarError : styles.snackbarSuccess
-        ]}
+        style={[styles.snackbar, snackbarType === 'error' ? styles.snackbarError : styles.snackbarSuccess]}
       >
         {snackbarMessage}
       </Snackbar>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: spacing.lg,
+    backgroundColor: colors.background,
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: spacing.md,
     fontSize: 16,
-    color: '#666'
+    color: colors.textSecondary,
   },
-  dateSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0'
-  },
-  dateText: {
-    fontSize: 18,
-    fontWeight: '600'
-  },
-  dateTouchable: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8
-  },
-  iosPickerButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    backgroundColor: '#fff'
+  section: {
+    padding: spacing.md,
   },
   errorBanner: {
-    backgroundColor: '#d32f2f',
-    padding: 12,
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 8
+    backgroundColor: colors.error,
+    padding: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: 8,
   },
   errorText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 14,
-    textAlign: 'center'
+    textAlign: 'center',
   },
-  card: {
-    margin: 12,
-    marginBottom: 6
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12
-  },
-  statBox: {
-    alignItems: 'center'
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976d2'
-  },
-  statLabel: {
+  goalHint: {
+    textAlign: 'center',
     fontSize: 12,
-    color: '#666',
-    marginTop: 2
-  },
-  inputLabel: {
-    fontSize: 13,
-    marginTop: 8,
-    marginBottom: 2,
-    color: '#666'
-  },
-  input: {
-    marginBottom: 4,
-    height: 45
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   submitButton: {
-    marginTop: 16
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+  },
+  submitButtonContent: {
+    paddingVertical: spacing.sm,
+  },
+  submitButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bottomSpacer: {
+    height: 100,
+  },
+  voiceFab: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: spacing.md + 60,
+    backgroundColor: colors.secondary,
+    opacity: 0, // Hidden, we use VoiceInputButton instead
+  },
+  voiceButtonWrapper: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: spacing.md + 60,
+  },
+  voiceButton: {
+    backgroundColor: colors.secondary,
+    borderRadius: 28,
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   snackbar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1000
+    marginBottom: spacing.lg,
   },
   snackbarSuccess: {
-    backgroundColor: '#4caf50'
+    backgroundColor: colors.success,
   },
   snackbarError: {
-    backgroundColor: '#d32f2f'
-  }
+    backgroundColor: colors.error,
+  },
 });

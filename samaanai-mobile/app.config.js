@@ -70,16 +70,21 @@ module.exports = {
         "expo-build-properties",
         {
           android: {
-            enableProguardInReleaseBuilds: true,
-            enableShrinkResourcesInReleaseBuilds: true,
+            enableProguardInReleaseBuilds: false,
+            enableShrinkResourcesInReleaseBuilds: false,
             usesCleartextTraffic: false,
-            enableAndroidX: true,
-            useAndroidX: true
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
+            minSdkVersion: 24
+          },
+          ios: {
+            deploymentTarget: "15.1"
           }
         }
       ],
       // Custom plugin to exclude old Android Support libraries that conflict with AndroidX
-      "./plugins/excludeAndroidSupport.js"
+      "./plugins/excludeAndroidSupport.js",
+      "expo-secure-store"
     ]
   }
 };
