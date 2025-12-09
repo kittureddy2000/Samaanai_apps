@@ -82,8 +82,6 @@ module.exports = {
           }
         }
       ],
-      // Custom plugin to exclude old Android Support libraries that conflict with AndroidX
-      "./plugins/excludeAndroidSupport.js",
       "expo-secure-store"
     ]
   }
