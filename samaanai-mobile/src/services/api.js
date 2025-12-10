@@ -204,6 +204,9 @@ export const api = {
   registerPushToken: (pushToken) =>
     apiClient.post('/user/push-token', { pushToken }),
 
+  sendTestNotification: () =>
+    apiClient.post('/user/test-notification'),
+
   // Microsoft To Do Integration
   getMicrosoftStatus: () =>
     apiClient.get('/integrations/microsoft/status'),
