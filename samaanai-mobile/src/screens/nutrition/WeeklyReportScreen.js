@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, Platform, TouchableOpacity } from 'react-native';
 import { Text, Button, ActivityIndicator, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   VictoryBar,
   VictoryChart,
@@ -181,22 +182,26 @@ export default function WeeklyReportScreen({ navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Week Navigation */}
       <Surface style={styles.weekSelector} elevation={1}>
-        <Button mode="text" onPress={handlePreviousWeek} icon="chevron-left" compact>
-          Prev
-        </Button>
-        <View style={styles.weekDisplay}>
-          {weeklyData?.start_date && weeklyData?.end_date ? (
-            <Text style={styles.weekText}>
-              {format(new Date(weeklyData.start_date), 'MMM d')} -{' '}
-              {format(new Date(weeklyData.end_date), 'MMM d, yyyy')}
-            </Text>
-          ) : (
-            <Text style={styles.weekText}>Select Week</Text>
-          )}
+        <View style={styles.navRow}>
+          <TouchableOpacity onPress={handlePreviousWeek} style={styles.navButton}>
+            <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSelectedDate(getStartOfCurrentWeek())} style={styles.weekDisplayTouchable}>
+            {weeklyData?.start_date && weeklyData?.end_date ? (
+              <Text style={styles.weekText}>
+                {format(new Date(weeklyData.start_date), 'MMM d')} - {format(new Date(weeklyData.end_date), 'MMM d, yyyy')}
+              </Text>
+            ) : (
+              <Text style={styles.weekText}>Select Week</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNextWeek} style={styles.navButton}>
+            <MaterialCommunityIcons name="chevron-right" size={28} color={colors.primary} />
+          </TouchableOpacity>
         </View>
-        <Button mode="text" onPress={handleNextWeek} icon="chevron-right" compact contentStyle={styles.nextButton}>
-          Next
-        </Button>
+        <TouchableOpacity onPress={() => setSelectedDate(getStartOfCurrentWeek())} style={styles.todayButton}>
+          <Text style={styles.todayText}>This Week</Text>
+        </TouchableOpacity>
       </Surface>
 
       {/* Summary Stats */}
@@ -347,13 +352,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   weekSelector: {
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  navRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.sm,
-    backgroundColor: colors.surface,
   },
-  weekDisplay: {
+  navButton: {
+    padding: spacing.sm,
+  },
+  weekDisplayTouchable: {
     flex: 1,
     alignItems: 'center',
   },
@@ -362,8 +373,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  nextButton: {
-    flexDirection: 'row-reverse',
+  todayButton: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primaryLight || '#e3f2fd',
+    borderRadius: 16,
+  },
+  todayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
   section: {
     padding: spacing.md,
