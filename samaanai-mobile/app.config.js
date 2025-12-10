@@ -70,6 +70,7 @@ module.exports = {
         "expo-build-properties",
         {
           android: {
+            newArchEnabled: true,
             enableProguardInReleaseBuilds: false,
             enableShrinkResourcesInReleaseBuilds: false,
             usesCleartextTraffic: false,
@@ -78,6 +79,7 @@ module.exports = {
             minSdkVersion: 24
           },
           ios: {
+            newArchEnabled: true,
             deploymentTarget: "15.1"
           }
         }

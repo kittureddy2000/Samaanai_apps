@@ -4,7 +4,13 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "android": {
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -12,6 +18,7 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "env": {
         "API_BASE_URL": "https://samaanai-backend-staging-362270100637.us-west1.run.app"
@@ -21,6 +28,7 @@
       }
     },
     "staging": {
+      "extends": "base",
       "distribution": "internal",
       "env": {
         "API_BASE_URL": "https://samaanai-backend-staging-362270100637.us-west1.run.app"
@@ -33,6 +41,7 @@
       }
     },
     "production": {
+      "extends": "base",
       "distribution": "internal",
       "env": {
         "API_BASE_URL": "https://samaanai-backend-172298808029.us-west1.run.app"
