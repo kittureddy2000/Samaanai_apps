@@ -11,5 +11,6 @@ router.put('/profile', userController.updateProfile);
 router.get('/preferences', userController.getPreferences);
 router.put('/preferences', userController.updatePreferences);
 router.post('/push-token', userController.registerPushToken);
+router.post('/test-notification', userController.sendTestNotification);
 
 module.exports = router;

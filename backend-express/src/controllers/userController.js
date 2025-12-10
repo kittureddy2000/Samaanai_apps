@@ -185,3 +185,59 @@ exports.registerPushToken = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.sendTestNotification = async (req, res, next) => {
+  try {
+    const { sendPushNotification } = require('../services/pushNotificationService');
+
+    console.log('=== Test Notification Request ===');
+    console.log('User ID:', req.user.id);
+    console.log('Username:', req.user.username);
+
+    // Get user's push token from profile
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: req.user.id }
+    });
+
+    console.log('User profile found:', !!profile);
+    console.log('Has push token:', !!profile?.pushToken);
+    console.log('Push token:', profile?.pushToken);
+    console.log('Notifications enabled:', profile?.notifications);
+    console.log('EXPO_ACCESS_TOKEN set:', !!process.env.EXPO_ACCESS_TOKEN);
+
+    if (!profile?.pushToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'No push token registered for this user',
+        debug: {
+          hasProfile: !!profile,
+          notificationsEnabled: profile?.notifications,
+          expoTokenConfigured: !!process.env.EXPO_ACCESS_TOKEN
+        }
+      });
+    }
+
+    // Send test notification
+    const result = await sendPushNotification({
+      pushToken: profile.pushToken,
+      title: 'Test Notification',
+      body: 'This is a test notification from Samaanai!',
+      data: { type: 'test', timestamp: new Date().toISOString() }
+    });
+
+    console.log('Push notification result:', result);
+
+    res.json({
+      success: result.success,
+      message: result.success ? 'Test notification sent successfully' : 'Failed to send notification',
+      debug: {
+        pushToken: profile.pushToken,
+        expoTokenConfigured: !!process.env.EXPO_ACCESS_TOKEN,
+        result
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error sending test notification:', error);
+    next(error);
+  }
+};
