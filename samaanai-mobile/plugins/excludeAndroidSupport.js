@@ -20,7 +20,7 @@ configurations.all {
 
 configurations.all {
     resolutionStrategy {
-        force 'androidx.core:core:1.13.1'
+        force 'androidx.core:core:1.16.0'
         force 'androidx.versionedparcelable:versionedparcelable:1.1.1'
     }
 }

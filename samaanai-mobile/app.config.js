@@ -58,6 +58,7 @@ module.exports = {
       }
     },
     plugins: [
+      "./plugins/excludeAndroidSupport",
       [
         "expo-image-picker",
         {
