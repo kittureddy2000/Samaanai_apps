@@ -457,40 +457,52 @@ export default function TodoScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Clickable filters */}
         <View style={styles.statsRow}>
-          <Surface style={styles.statCard} elevation={2}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#e3f2fd' }]}>
-              <MaterialCommunityIcons name="calendar-today" size={20} color="#1976d2" />
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'overdue' && styles.statCardActive]}
+            onPress={() => setFilter(filter === 'overdue' ? 'pending' : 'overdue')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'overdue' ? '#fff' : '#ffebee' }]}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#d32f2f" />
             </View>
-            <Text style={styles.statNumber}>{filterStats.dueToday}</Text>
-            <Text style={styles.statLabel}>Today</Text>
-          </Surface>
-          <Surface style={styles.statCard} elevation={2}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#fff3e0' }]}>
-              <MaterialCommunityIcons name="clock-outline" size={20} color="#ff9800" />
+            <Text style={[styles.statNumber, { color: '#d32f2f' }]}>{filterStats.overdue}</Text>
+            <Text style={[styles.statLabel, filter === 'overdue' && styles.statLabelActive]}>Late</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'dueThisWeek' && styles.statCardActiveWeek]}
+            onPress={() => setFilter(filter === 'dueThisWeek' ? 'pending' : 'dueThisWeek')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'dueThisWeek' ? '#fff' : '#fff3e0' }]}>
+              <MaterialCommunityIcons name="calendar-week" size={14} color="#ff9800" />
             </View>
-            <Text style={styles.statNumber}>{filterStats.dueThisWeek}</Text>
-            <Text style={styles.statLabel}>This Week</Text>
-          </Surface>
-          <Surface style={styles.statCard} elevation={2}>
-            <View style={[styles.statIconCircle, { backgroundColor: '#ffebee' }]}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#d32f2f" />
+            <Text style={[styles.statNumber, { color: '#ff9800' }]}>{filterStats.dueThisWeek}</Text>
+            <Text style={[styles.statLabel, filter === 'dueThisWeek' && styles.statLabelActive]}>Week</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'pending' && styles.statCardActivePending]}
+            onPress={() => setFilter('pending')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'pending' ? '#fff' : '#e3f2fd' }]}>
+              <MaterialCommunityIcons name="format-list-checks" size={14} color="#1976d2" />
             </View>
-            <Text style={[styles.statNumber, filterStats.overdue > 0 && { color: '#d32f2f' }]}>{filterStats.overdue}</Text>
-            <Text style={styles.statLabel}>Overdue</Text>
-          </Surface>
-          <Surface style={styles.statCard} elevation={2}>
+            <Text style={[styles.statNumber, { color: '#1976d2' }]}>{filterStats.pending}</Text>
+            <Text style={[styles.statLabel, filter === 'pending' && styles.statLabelActive]}>Todo</Text>
+          </TouchableOpacity>
+          <View style={styles.statCard}>
             <View style={[styles.statIconCircle, { backgroundColor: '#e8f5e9' }]}>
-              <MaterialCommunityIcons name="check-circle-outline" size={20} color="#43a047" />
+              <MaterialCommunityIcons name="check-circle-outline" size={14} color="#43a047" />
             </View>
             <Text style={[styles.statNumber, { color: '#43a047' }]}>{filterStats.completionRate}%</Text>
             <Text style={styles.statLabel}>Done</Text>
-          </Surface>
+          </View>
         </View>
       </View>
 
-      {/* Search and Filter Section */}
+      {/* Search Section */}
       <View style={styles.searchSection}>
         <View style={styles.searchRow}>
           <Searchbar
@@ -530,54 +542,6 @@ export default function TodoScreen({ navigation }) {
               leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
             />
           </Menu>
-        </View>
-
-        {/* Filter Chips */}
-        <View style={styles.filterChipsContainer}>
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'overdue' && styles.filterChipOverdueActive]}
-            onPress={() => setFilter('overdue')}
-          >
-            <MaterialCommunityIcons
-              name="alert-circle"
-              size={14}
-              color={filter === 'overdue' ? '#fff' : '#d32f2f'}
-              style={styles.filterChipIcon}
-            />
-            <Text style={[styles.filterChipText, filter === 'overdue' && styles.filterChipTextActive]}>
-              Overdue ({filterStats.overdue})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'dueThisWeek' && styles.filterChipWeekActive]}
-            onPress={() => setFilter('dueThisWeek')}
-          >
-            <MaterialCommunityIcons
-              name="calendar-week"
-              size={14}
-              color={filter === 'dueThisWeek' ? '#fff' : '#ff9800'}
-              style={styles.filterChipIcon}
-            />
-            <Text style={[styles.filterChipText, filter === 'dueThisWeek' && styles.filterChipTextActive]}>
-              This Week ({filterStats.dueThisWeek})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.filterChip, filter === 'pending' && styles.filterChipPendingActive]}
-            onPress={() => setFilter('pending')}
-          >
-            <MaterialCommunityIcons
-              name="format-list-checks"
-              size={14}
-              color={filter === 'pending' ? '#fff' : '#1976d2'}
-              style={styles.filterChipIcon}
-            />
-            <Text style={[styles.filterChipText, filter === 'pending' && styles.filterChipTextActive]}>
-              Pending ({filterStats.pending})
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -633,101 +597,120 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: 8
   },
-  // Dashboard Header
+  // Dashboard Header - Compact version
   dashboardHeader: {
     backgroundColor: '#fff',
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3
   },
   greetingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16
+    alignItems: 'center',
+    marginBottom: 10
   },
   greetingText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#212121'
   },
   dateText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#757575',
-    marginTop: 4
+    marginTop: 2
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8
+    gap: 6
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10
+    gap: 8
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center'
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent'
+  },
+  statCardActive: {
+    backgroundColor: '#ffebee',
+    borderColor: '#d32f2f'
+  },
+  statCardActiveWeek: {
+    backgroundColor: '#fff3e0',
+    borderColor: '#ff9800'
+  },
+  statCardActivePending: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#1976d2'
   },
   statIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8
+    marginRight: 6
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#212121'
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#9e9e9e',
-    marginTop: 2,
-    fontWeight: '500'
+    fontWeight: '500',
+    marginLeft: 2
   },
-  // Search Section
+  statLabelActive: {
+    fontWeight: '700'
+  },
+  // Search Section - Compact
   searchSection: {
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12
+    paddingTop: 12,
+    paddingBottom: 8
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12
+    marginBottom: 10
   },
   searchBar: {
     flex: 1,
-    height: 42,
+    height: 38,
     elevation: 0,
     backgroundColor: '#fff',
-    borderRadius: 21,
+    borderRadius: 19,
     borderWidth: 1,
     borderColor: '#e8e8e8'
   },
   searchInput: {
-    fontSize: 14,
+    fontSize: 13,
     minHeight: 0,
     paddingVertical: 0
   },
   integrationButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -739,86 +722,46 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0'
   },
   sortIconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e8e8e8'
   },
-  // Filter chips
-  filterChipsContainer: {
-    flexDirection: 'row',
-    gap: 8
-  },
-  filterChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1.5,
-    borderColor: '#e0e0e0'
-  },
-  filterChipIcon: {
-    marginRight: 3
-  },
-  filterChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666'
-  },
-  filterChipTextActive: {
-    color: '#fff'
-  },
-  filterChipOverdueActive: {
-    backgroundColor: '#d32f2f',
-    borderColor: '#d32f2f'
-  },
-  filterChipWeekActive: {
-    backgroundColor: '#ff9800',
-    borderColor: '#ff9800'
-  },
-  filterChipPendingActive: {
-    backgroundColor: '#1976d2',
-    borderColor: '#1976d2'
-  },
   tasksList: {
     flex: 1,
-    paddingTop: 4
+    paddingTop: 2
   },
   taskItem: {
     backgroundColor: '#fff',
     marginHorizontal: 12,
-    marginVertical: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
+    marginVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#eaeaea',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1
   },
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center'
   },
   checkboxContainer: {
-    marginRight: 14
+    marginRight: 12
   },
   checkbox: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2.5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
     borderColor: '#d0d0d0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -830,14 +773,14 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     flex: 1,
-    marginRight: 12
+    marginRight: 10
   },
   taskName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#212121',
-    marginBottom: 5,
-    lineHeight: 20
+    marginBottom: 3,
+    lineHeight: 18
   },
   completedText: {
     color: '#9e9e9e',
@@ -845,9 +788,9 @@ const styles = StyleSheet.create({
     fontWeight: '400'
   },
   dueDateText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#757575',
-    marginTop: 2
+    marginTop: 1
   },
   completedDueDate: {
     color: '#bdbdbd',
@@ -866,9 +809,9 @@ const styles = StyleSheet.create({
     marginRight: 0
   },
   priorityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6
+    width: 10,
+    height: 10,
+    borderRadius: 5
   },
   emptyState: {
     alignItems: 'center',

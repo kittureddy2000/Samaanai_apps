@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Image, Alert, Linking, TouchableOpacity, Platform } from 'react-native';
-import { Text, Card, Title, Button, ActivityIndicator, Chip, IconButton } from 'react-native-paper';
+import { Text, ActivityIndicator, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
@@ -10,6 +10,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [task, setTask] = useState(null);
   const [error, setError] = useState(null);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     fetchTask();
@@ -31,16 +32,18 @@ export default function TaskDetailScreen({ route, navigation }) {
 
   const handleToggleCompletion = async () => {
     try {
+      setToggling(true);
       await api.toggleTaskCompletion(taskId);
-      fetchTask();
+      await fetchTask();
     } catch (err) {
       console.error('Toggle task error:', err);
       Alert.alert('Error', 'Failed to update task');
+    } finally {
+      setToggling(false);
     }
   };
 
   const handleDelete = async () => {
-    // For web, use window.confirm instead of Alert.alert
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to delete this task?');
       if (confirmed) {
@@ -53,7 +56,6 @@ export default function TaskDetailScreen({ route, navigation }) {
         }
       }
     } else {
-      // For mobile, use Alert.alert
       Alert.alert(
         'Delete Task',
         'Are you sure you want to delete this task?',
@@ -86,7 +88,6 @@ export default function TaskDetailScreen({ route, navigation }) {
 
   const getFileIcon = (url) => {
     if (!url) return 'file-document';
-
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes('.pdf')) return 'file-pdf-box';
     if (lowerUrl.includes('.doc') || lowerUrl.includes('.docx')) return 'file-word-box';
@@ -94,7 +95,6 @@ export default function TaskDetailScreen({ route, navigation }) {
     if (lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx')) return 'file-powerpoint-box';
     if (lowerUrl.includes('.txt')) return 'file-document-outline';
     if (lowerUrl.includes('.zip') || lowerUrl.includes('.rar')) return 'zip-box';
-
     return 'file-document';
   };
 
@@ -107,15 +107,12 @@ export default function TaskDetailScreen({ route, navigation }) {
   const handleOpenFile = async (url) => {
     try {
       if (Platform.OS === 'web') {
-        // For web, open in new tab or download
         if (url.startsWith('data:')) {
-          // Data URL - download it
           const link = document.createElement('a');
           link.href = url;
           link.download = getFileName(url);
           link.click();
         } else {
-          // Regular URL - open in new tab
           window.open(url, '_blank');
         }
       } else {
@@ -135,7 +132,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#1976d2" />
         <Text style={styles.loadingText}>Loading task...</Text>
       </View>
     );
@@ -144,219 +141,220 @@ export default function TaskDetailScreen({ route, navigation }) {
   if (error || !task) {
     return (
       <View style={styles.centered}>
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#d32f2f" />
         <Text style={styles.errorText}>{error || 'Task not found'}</Text>
-        <Button mode="contained" onPress={() => navigation.goBack()} style={styles.retryButton}>
-          Go Back
-        </Button>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
 
+  const DetailRow = ({ icon, iconColor, label, value, valueStyle }) => (
+    <View style={styles.detailRow}>
+      <View style={[styles.detailIconCircle, { backgroundColor: iconColor + '15' }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
+      </View>
+      <View style={styles.detailContent}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={[styles.detailValue, valueStyle]}>{value}</Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTitle}>Task Details</Text>
-        <IconButton
-          icon="pencil"
-          size={24}
-          onPress={() => navigation.navigate('EditTask', { task })}
-        />
-      </View>
-
-      <ScrollView style={styles.content}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.statusRow}>
-              <Chip
-                mode="flat"
-                selected
-                style={[styles.statusChip, task.completed ? styles.completedChip : styles.pendingChip]}
-              >
-                {task.completed ? 'Completed' : 'Pending'}
-              </Chip>
-              {isOverdue && (
-                <Chip mode="flat" selected style={styles.overdueChip}>
-                  Overdue
-                </Chip>
-              )}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          {/* Status Badge */}
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusBadge,
+              task.completed ? styles.statusCompleted : (isOverdue ? styles.statusOverdue : styles.statusPending)
+            ]}>
+              <MaterialCommunityIcons
+                name={task.completed ? 'check-circle' : (isOverdue ? 'alert-circle' : 'clock-outline')}
+                size={16}
+                color="#fff"
+              />
+              <Text style={styles.statusText}>
+                {task.completed ? 'Completed' : (isOverdue ? 'Overdue' : 'Pending')}
+              </Text>
             </View>
+          </View>
 
-            <Title style={styles.taskName}>{task.name}</Title>
+          {/* Task Name */}
+          <Text style={styles.taskName}>{task.name}</Text>
 
-            {task.description && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <Text style={styles.description}>{task.description}</Text>
-              </View>
-            )}
+          {/* Description */}
+          {task.description && (
+            <Text style={styles.taskDescription}>{task.description}</Text>
+          )}
+        </View>
 
+        {/* Details Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Details</Text>
+          <Surface style={styles.detailsCard} elevation={1}>
             {task.dueDate && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Due Date</Text>
-                <Text style={[styles.infoText, isOverdue && styles.overdueText]}>
-                  {format(new Date(task.dueDate), 'MMMM dd, yyyy')}
-                </Text>
-              </View>
+              <DetailRow
+                icon="calendar"
+                iconColor={isOverdue ? '#d32f2f' : '#ff9800'}
+                label="Due Date"
+                value={format(new Date(task.dueDate), 'MMMM dd, yyyy')}
+                valueStyle={isOverdue && styles.overdueValue}
+              />
             )}
-
             {task.reminderType && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Reminder</Text>
-                <Text style={styles.infoText}>{task.reminderType}</Text>
-              </View>
+              <DetailRow
+                icon="bell"
+                iconColor="#7b1fa2"
+                label="Reminder"
+                value={task.reminderType}
+              />
             )}
+            <DetailRow
+              icon="clock-outline"
+              iconColor="#1976d2"
+              label="Created"
+              value={format(new Date(task.createdAt), 'MMM dd, yyyy h:mm a')}
+            />
+            {task.completedAt && (
+              <DetailRow
+                icon="check-circle"
+                iconColor="#43a047"
+                label="Completed"
+                value={format(new Date(task.completedAt), 'MMM dd, yyyy h:mm a')}
+              />
+            )}
+          </Surface>
+        </View>
 
-            {task.imageUrl && (() => {
-              // Try to parse attachments from JSON (Microsoft To Do sync)
-              let attachments = [];
-              try {
-                const parsed = JSON.parse(task.imageUrl);
-                if (Array.isArray(parsed)) {
-                  attachments = parsed;
-                }
-              } catch (e) {
-                // Not JSON, treat as single attachment URL
-                attachments = [{ name: getFileName(task.imageUrl), url: task.imageUrl }];
-              }
+        {/* Attachments Section */}
+        {task.imageUrl && (() => {
+          let attachments = [];
+          try {
+            const parsed = JSON.parse(task.imageUrl);
+            if (Array.isArray(parsed)) {
+              attachments = parsed;
+            }
+          } catch (e) {
+            attachments = [{ name: getFileName(task.imageUrl), url: task.imageUrl }];
+          }
 
-              return (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>
-                    Attachment{attachments.length > 1 ? 's' : ''} ({attachments.length})
-                  </Text>
-                  {attachments.map((attachment, index) => {
-                    // For old-style single URL attachments
-                    if (attachment.url) {
-                      return isImageFile(attachment.url) ? (
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Attachments ({attachments.length})
+              </Text>
+              <Surface style={styles.detailsCard} elevation={1}>
+                {attachments.map((attachment, index) => {
+                  if (attachment.url) {
+                    return isImageFile(attachment.url) ? (
+                      <View key={index} style={styles.imageContainer}>
                         <Image
-                          key={index}
                           source={{ uri: attachment.url }}
                           style={styles.taskImage}
                           resizeMode="cover"
                         />
-                      ) : (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.fileAttachment}
-                          onPress={() => handleOpenFile(attachment.url)}
-                        >
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.fileAttachment}
+                        onPress={() => handleOpenFile(attachment.url)}
+                      >
+                        <View style={[styles.fileIconCircle, { backgroundColor: '#e3f2fd' }]}>
                           <MaterialCommunityIcons
                             name={getFileIcon(attachment.url)}
-                            size={48}
+                            size={24}
                             color="#1976d2"
                           />
-                          <View style={styles.fileInfo}>
-                            <Text style={styles.fileName} numberOfLines={2}>
-                              {attachment.name || getFileName(attachment.url)}
-                            </Text>
-                            <Text style={styles.fileAction}>Tap to open</Text>
-                          </View>
-                          <MaterialCommunityIcons
-                            name="open-in-new"
-                            size={24}
-                            color="#666"
-                          />
-                        </TouchableOpacity>
-                      );
-                    }
+                        </View>
+                        <View style={styles.fileInfo}>
+                          <Text style={styles.fileName} numberOfLines={1}>
+                            {attachment.name || getFileName(attachment.url)}
+                          </Text>
+                          <Text style={styles.fileAction}>Tap to open</Text>
+                        </View>
+                        <MaterialCommunityIcons name="open-in-new" size={20} color="#9e9e9e" />
+                      </TouchableOpacity>
+                    );
+                  }
 
-                    // For Microsoft To Do attachments (metadata only)
-                    return (
-                      <View key={index} style={[styles.fileAttachment, styles.msAttachment]}>
+                  return (
+                    <View key={index} style={styles.fileAttachment}>
+                      <View style={[styles.fileIconCircle, { backgroundColor: '#f5f5f5' }]}>
                         <MaterialCommunityIcons
                           name={getFileIcon(attachment.name)}
-                          size={48}
-                          color="#999"
-                        />
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName} numberOfLines={2}>
-                            {attachment.name}
-                          </Text>
-                          <Text style={styles.fileSize}>
-                            {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'Size unknown'}
-                          </Text>
-                          <View style={styles.msNoteContainer}>
-                            <MaterialCommunityIcons
-                              name="information-outline"
-                              size={14}
-                              color="#00A4EF"
-                              style={styles.infoIcon}
-                            />
-                            <Text style={styles.attachmentNote}>
-                              File available only in Microsoft To Do app
-                            </Text>
-                          </View>
-                        </View>
-                        <MaterialCommunityIcons
-                          name="microsoft"
                           size={24}
-                          color="#00A4EF"
+                          color="#9e9e9e"
                         />
                       </View>
-                    );
-                  })}
-                </View>
-              );
-            })()}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Created</Text>
-              <Text style={styles.infoText}>
-                {format(new Date(task.createdAt), 'MMM dd, yyyy hh:mm a')}
-              </Text>
+                      <View style={styles.fileInfo}>
+                        <Text style={styles.fileName} numberOfLines={1}>{attachment.name}</Text>
+                        <Text style={styles.msNote}>Available in Microsoft To Do</Text>
+                      </View>
+                      <MaterialCommunityIcons name="microsoft" size={20} color="#00A4EF" />
+                    </View>
+                  );
+                })}
+              </Surface>
             </View>
+          );
+        })()}
 
-            {task.completedAt && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Completed</Text>
-                <Text style={styles.infoText}>
-                  {format(new Date(task.completedAt), 'MMM dd, yyyy hh:mm a')}
-                </Text>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
+        {/* Actions Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Actions</Text>
 
-        <Card style={styles.card}>
-          <Card.Content>
-            <Button
-              mode="contained"
-              onPress={handleToggleCompletion}
-              style={styles.actionButton}
-              icon={task.completed ? 'checkbox-blank-outline' : 'checkbox-marked'}
-            >
-              Mark as {task.completed ? 'Incomplete' : 'Complete'}
-            </Button>
+          {/* Mark Complete Button */}
+          <TouchableOpacity
+            style={[
+              styles.completeButton,
+              task.completed ? styles.incompleteButton : styles.markCompleteButton,
+              toggling && styles.buttonDisabled
+            ]}
+            onPress={handleToggleCompletion}
+            disabled={toggling}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name={task.completed ? 'checkbox-blank-outline' : 'checkbox-marked-circle'}
+              size={22}
+              color="#fff"
+            />
+            <Text style={styles.completeButtonText}>
+              {toggling ? 'Updating...' : (task.completed ? 'Mark as Incomplete' : 'Mark as Complete')}
+            </Text>
+          </TouchableOpacity>
 
-            <Button
-              mode="outlined"
+          {/* Edit and Delete */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.editButton}
               onPress={() => navigation.navigate('EditTask', { task })}
-              style={styles.actionButton}
-              icon="pencil"
+              activeOpacity={0.8}
             >
-              Edit Task
-            </Button>
+              <MaterialCommunityIcons name="pencil" size={20} color="#1976d2" />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
 
-            <Button
-              mode="outlined"
+            <TouchableOpacity
+              style={styles.deleteButton}
               onPress={handleDelete}
-              style={styles.actionButton}
-              buttonColor="#fff"
-              textColor="#d32f2f"
-              icon="delete"
+              activeOpacity={0.8}
             >
-              Delete Task
-            </Button>
-          </Card.Content>
-        </Card>
+              <MaterialCommunityIcons name="delete" size={20} color="#d32f2f" />
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </View>
   );
@@ -365,39 +363,17 @@ export default function TaskDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#f5f6f8'
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-    textAlign: 'center'
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#f5f5f5'
+  scrollView: {
+    flex: 1
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: 24,
+    backgroundColor: '#f5f6f8'
   },
   loadingText: {
     marginTop: 16,
@@ -408,76 +384,147 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#d32f2f',
     textAlign: 'center',
+    marginTop: 12,
     marginBottom: 16
   },
-  retryButton: {
-    marginTop: 8
+  backButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24
   },
-  card: {
-    margin: 16,
-    marginBottom: 8
+  backButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14
   },
-  statusRow: {
+  // Header Section
+  headerSection: {
+    backgroundColor: '#fff',
+    paddingTop: 24,
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4
+  },
+  statusContainer: {
     flexDirection: 'row',
-    gap: 8,
     marginBottom: 16
   },
-  statusChip: {
-    height: 32
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16
   },
-  completedChip: {
-    backgroundColor: '#4caf50'
+  statusCompleted: {
+    backgroundColor: '#43a047'
   },
-  pendingChip: {
+  statusPending: {
     backgroundColor: '#ff9800'
   },
-  overdueChip: {
+  statusOverdue: {
     backgroundColor: '#d32f2f'
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 6
   },
   taskName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16
+    fontWeight: '700',
+    color: '#212121',
+    marginBottom: 8
   },
+  taskDescription: {
+    fontSize: 15,
+    color: '#616161',
+    lineHeight: 22
+  },
+  // Sections
   section: {
-    marginBottom: 16
+    marginTop: 24,
+    paddingHorizontal: 16
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 6
+    color: '#9e9e9e',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    marginLeft: 4
   },
-  description: {
-    fontSize: 16,
-    color: '#333',
-    lineHeight: 24
+  detailsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden'
   },
-  infoText: {
-    fontSize: 16,
-    color: '#333'
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0'
   },
-  overdueText: {
+  detailIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14
+  },
+  detailContent: {
+    flex: 1
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#9e9e9e',
+    marginBottom: 2
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#212121'
+  },
+  overdueValue: {
     color: '#d32f2f',
     fontWeight: '600'
+  },
+  // Attachments
+  imageContainer: {
+    padding: 12
   },
   taskImage: {
     width: '100%',
     height: 200,
-    borderRadius: 8,
-    marginTop: 8
+    borderRadius: 12
   },
   fileAttachment: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginTop: 8,
-    gap: 12
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0'
+  },
+  fileIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14
   },
   fileInfo: {
     flex: 1
@@ -485,38 +532,91 @@ const styles = StyleSheet.create({
   fileName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4
+    color: '#212121',
+    marginBottom: 2
   },
   fileAction: {
     fontSize: 12,
     color: '#1976d2'
   },
-  fileSize: {
+  msNote: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 2
+    color: '#00A4EF',
+    fontStyle: 'italic'
   },
-  msAttachment: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#dee2e6',
-    opacity: 0.9
-  },
-  msNoteContainer: {
+  // Actions
+  completeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 12
   },
-  infoIcon: {
-    marginRight: 4
+  markCompleteButton: {
+    backgroundColor: '#43a047',
+    shadowColor: '#43a047',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4
   },
-  attachmentNote: {
-    fontSize: 11,
-    color: '#00A4EF',
-    fontStyle: 'italic',
-    flex: 1
+  incompleteButton: {
+    backgroundColor: '#ff9800',
+    shadowColor: '#ff9800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4
   },
-  actionButton: {
-    marginVertical: 8
+  buttonDisabled: {
+    opacity: 0.7
+  },
+  completeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#1976d2'
+  },
+  editButtonText: {
+    color: '#1976d2',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8
+  },
+  deleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#ffcdd2'
+  },
+  deleteButtonText: {
+    color: '#d32f2f',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8
+  },
+  bottomSpacer: {
+    height: 40
   }
 });
