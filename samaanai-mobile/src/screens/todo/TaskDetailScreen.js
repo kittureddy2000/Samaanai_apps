@@ -34,11 +34,11 @@ export default function TaskDetailScreen({ route, navigation }) {
     try {
       setToggling(true);
       await api.toggleTaskCompletion(taskId);
-      await fetchTask();
+      // Navigate back to task dashboard after marking complete
+      navigation.goBack();
     } catch (err) {
       console.error('Toggle task error:', err);
       Alert.alert('Error', 'Failed to update task');
-    } finally {
       setToggling(false);
     }
   };
