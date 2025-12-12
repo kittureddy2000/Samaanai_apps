@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, Text, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -22,6 +22,7 @@ const MealInput = ({
   unit = 'cal',
   editable = true,
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
   // Get meal type configuration
   const getMealConfig = () => {
     switch (mealType) {
@@ -94,6 +95,8 @@ const MealInput = ({
           <TextInput
             value={value}
             onChangeText={onChangeText}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             keyboardType="numeric"
             mode="flat"
             placeholder="0"
@@ -102,13 +105,10 @@ const MealInput = ({
             underlineColor="transparent"
             activeUnderlineColor={config.color}
             contentStyle={styles.inputContent}
-            right={
-              <TextInput.Affix
-                text={displayUnit}
-                textStyle={styles.unit}
-              />
-            }
           />
+          {!isFocused && value && value !== '' && (
+            <Text style={styles.unitLabel}>{displayUnit}</Text>
+          )}
         </View>
       </View>
     </Surface>
@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: 140,
+    position: 'relative',
   },
   input: {
     backgroundColor: colors.surfaceVariant,
@@ -166,7 +167,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingRight: 4,
   },
-  unit: {
+  unitLabel: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
     color: colors.textSecondary,
     fontSize: 12,
   },
