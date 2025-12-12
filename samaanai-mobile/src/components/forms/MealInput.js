@@ -59,7 +59,7 @@ const MealInput = ({
           label: 'Exercise',
           color: colors.caloriesBurned,
           emoji: '🏃',
-          unit: 'cal burned',
+          unit: 'cal',
         };
       case 'weight':
         return {

@@ -7,7 +7,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../services/api';
 import { format, addDays, getDay } from 'date-fns';
-import VoiceInputButton from '../../components/VoiceInputButton';
 
 const getEndOfWeek = () => {
   const today = new Date();
@@ -229,21 +228,6 @@ export default function AddEditTaskScreen({ route, navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleVoiceCommand = (parsedCommand, transcript) => {
-    if (parsedCommand.type === 'task') {
-      setFormData({
-        ...formData,
-        name: parsedCommand.name || formData.name,
-        description: parsedCommand.description || formData.description,
-        dueDate: parsedCommand.dueDate || formData.dueDate,
-        reminderType: parsedCommand.reminderType || formData.reminderType
-      });
-      if (parsedCommand.dueDate) {
-        setSelectedDate(new Date(parsedCommand.dueDate));
-      }
-    }
-  };
-
   const handleSubmit = async () => {
     if (!validate()) return;
 
@@ -282,15 +266,10 @@ export default function AddEditTaskScreen({ route, navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <MaterialCommunityIcons name="close" size={24} color="#666" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#666" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEdit ? 'Edit Task' : 'New Task'}</Text>
-        <View style={styles.headerRight}>
-          <VoiceInputButton
-            onCommandParsed={handleVoiceCommand}
-            commandType="task"
-          />
-        </View>
+        <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

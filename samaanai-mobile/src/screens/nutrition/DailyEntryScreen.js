@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, ActivityIndicator, Snackbar, FAB, Surface } from 'react-native-paper';
+import { Text, Button, ActivityIndicator, Snackbar, Surface } from 'react-native-paper';
 import { api } from '../../services/api';
 import { format, subDays, addDays } from 'date-fns';
 import { colors, spacing } from '../../theme';
 import { DateNavigator, StatCard, StatCardRow } from '../../components/common';
 import { MealInput, MealInputGroup } from '../../components/forms';
-import VoiceInputButton from '../../components/VoiceInputButton';
 
 export default function DailyEntryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
@@ -95,33 +94,6 @@ export default function DailyEntryScreen({ navigation }) {
       ...prev,
       [field]: value,
     }));
-  };
-
-  const handleVoiceCommand = (parsedCommand) => {
-    if (parsedCommand.type === 'calorie') {
-      const mealTypeMap = {
-        breakfast: 'breakfast',
-        lunch: 'lunch',
-        dinner: 'dinner',
-        snack: 'snacks',
-        snacks: 'snacks',
-      };
-
-      const fieldName = mealTypeMap[parsedCommand.mealType];
-      if (fieldName && parsedCommand.calories) {
-        setFormValues((prev) => ({
-          ...prev,
-          [fieldName]: parsedCommand.calories.toString(),
-        }));
-      }
-    } else if (parsedCommand.type === 'exercise') {
-      if (parsedCommand.caloriesBurned) {
-        setFormValues((prev) => ({
-          ...prev,
-          exercise: parsedCommand.caloriesBurned.toString(),
-        }));
-      }
-    }
   };
 
   const handleSubmit = async () => {
@@ -341,24 +313,6 @@ export default function DailyEntryScreen({ navigation }) {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Voice Input FAB */}
-      <FAB
-        icon="microphone"
-        style={styles.voiceFab}
-        onPress={() => {}}
-        color={colors.white}
-        customSize={56}
-      />
-      <View style={styles.voiceButtonWrapper}>
-        <VoiceInputButton
-          onCommandParsed={handleVoiceCommand}
-          commandType="all"
-          size={56}
-          iconColor={colors.white}
-          style={styles.voiceButton}
-        />
-      </View>
-
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
@@ -431,27 +385,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacer: {
-    height: 100,
-  },
-  voiceFab: {
-    position: 'absolute',
-    right: spacing.md,
-    bottom: spacing.md + 60,
-    backgroundColor: colors.secondary,
-    opacity: 0, // Hidden, we use VoiceInputButton instead
-  },
-  voiceButtonWrapper: {
-    position: 'absolute',
-    right: spacing.md,
-    bottom: spacing.md + 60,
-  },
-  voiceButton: {
-    backgroundColor: colors.secondary,
-    borderRadius: 28,
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 40,
   },
   snackbar: {
     marginBottom: spacing.lg,
