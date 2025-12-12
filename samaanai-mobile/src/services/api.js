@@ -62,6 +62,15 @@ apiClient.interceptors.response.use(
 
       try {
         const refreshToken = await secureStorage.getItem('refreshToken');
+
+        // If no refresh token exists, clear auth data and reject
+        if (!refreshToken) {
+          console.log('No refresh token available - clearing auth data');
+          await secureStorage.multiRemove(['accessToken', 'refreshToken']);
+          await appStorage.removeItem('user');
+          return Promise.reject(new Error('No refresh token available'));
+        }
+
         const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
           refreshToken
         });
@@ -77,6 +86,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed - clear all auth data and logout user
+        console.log('Token refresh failed - clearing auth data:', refreshError.message);
         await secureStorage.multiRemove(['accessToken', 'refreshToken']);
         await appStorage.removeItem('user'); // User data is non-sensitive, stored in appStorage
         // Navigate to login (use navigation ref)

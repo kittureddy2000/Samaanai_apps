@@ -18,15 +18,33 @@ export const AuthProvider = ({ children }) => {
     try {
       const storedUser = await appStorage.getItem('user');
       const token = await secureStorage.getItem('accessToken');
+      const refreshToken = await secureStorage.getItem('refreshToken');
 
-      if (storedUser && token) {
+      // Need both tokens and user data to be authenticated
+      if (storedUser && token && refreshToken) {
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
         // Register push token for existing session
         await registerPushToken();
+      } else if (storedUser || token) {
+        // Partial auth state - clear it and require fresh login
+        console.log('Incomplete auth state detected - clearing');
+        await Promise.all([
+          appStorage.removeItem('user'),
+          secureStorage.multiRemove(['accessToken', 'refreshToken'])
+        ]);
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      // On any error, clear auth state to prevent stuck states
+      try {
+        await Promise.all([
+          appStorage.removeItem('user'),
+          secureStorage.multiRemove(['accessToken', 'refreshToken'])
+        ]);
+      } catch (clearError) {
+        console.error('Error clearing auth state:', clearError);
+      }
     } finally {
       setLoading(false);
     }
