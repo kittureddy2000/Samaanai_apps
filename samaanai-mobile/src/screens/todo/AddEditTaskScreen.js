@@ -243,10 +243,8 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
       if (isEdit) {
         await api.updateTask(task.id, taskData);
-        Alert.alert('Success', 'Task updated successfully');
       } else {
         await api.createTask(taskData);
-        Alert.alert('Success', 'Task created successfully');
       }
       navigation.goBack();
     } catch (err) {

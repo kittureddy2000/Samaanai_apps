@@ -4,7 +4,6 @@ import { TextInput, Button, Text, Title, HelperText } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterScreen({ navigation }) {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -13,7 +12,7 @@ export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
 
   const handleRegister = async () => {
-    if (!username || !email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
@@ -31,7 +30,8 @@ export default function RegisterScreen({ navigation }) {
     setLoading(true);
     setError('');
 
-    const result = await register(username, email, password);
+    // Use email as username
+    const result = await register(email, email, password);
 
     if (!result.success) {
       setError(result.error);
@@ -46,15 +46,6 @@ export default function RegisterScreen({ navigation }) {
     >
       <View style={styles.content}>
         <Title style={styles.title}>Create Account</Title>
-
-        <TextInput
-          label="Username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          style={styles.input}
-          mode="outlined"
-        />
 
         <TextInput
           label="Email"

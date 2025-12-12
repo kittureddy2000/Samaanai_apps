@@ -195,8 +195,8 @@ export default function ProfileScreen({ navigation }) {
     );
   }
 
-  const { username, email, created_at } = profile || {};
-  const initials = username ? username.substring(0, 2).toUpperCase() : 'U';
+  const { email, created_at } = profile || {};
+  const initials = email ? email.substring(0, 2).toUpperCase() : 'U';
   const memberSince = created_at ? new Date(created_at).toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric'
@@ -238,7 +238,6 @@ export default function ProfileScreen({ navigation }) {
             <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.username}>{username}</Text>
         <Text style={styles.email}>{email}</Text>
         <View style={styles.memberBadge}>
           <MaterialCommunityIcons name="calendar-check" size={14} color="#8bc34a" />
@@ -285,13 +284,6 @@ export default function ProfileScreen({ navigation }) {
             title="Daily Goals"
             subtitle="Set your calorie and macro goals"
             onPress={() => navigation.navigate('Nutrition', { screen: 'Goals' })}
-          />
-          <MenuItem
-            icon="food-apple"
-            iconColor="#43a047"
-            title="Food Preferences"
-            subtitle="Manage dietary preferences"
-            onPress={() => navigation.navigate('FoodPreferences')}
             showBorder={false}
           />
         </Surface>
@@ -477,15 +469,10 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#fff'
   },
-  username: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#212121',
-    marginBottom: 4
-  },
   email: {
-    fontSize: 15,
-    color: '#757575',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#212121',
     marginBottom: 12
   },
   memberBadge: {

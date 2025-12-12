@@ -11,8 +11,7 @@ export default function EditProfileScreen({ navigation }) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
-    username: ''
+    email: ''
   });
   const [errors, setErrors] = useState({});
 
@@ -28,8 +27,7 @@ export default function EditProfileScreen({ navigation }) {
       setFormData({
         firstName: data.first_name || '',
         lastName: data.last_name || '',
-        email: data.email || '',
-        username: data.username || ''
+        email: data.email || ''
       });
     } catch (err) {
       console.error('Fetch profile error:', err);
@@ -40,20 +38,8 @@ export default function EditProfileScreen({ navigation }) {
   };
 
   const validate = () => {
-    const newErrors = {};
-
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // No validation needed - email is read-only, names are optional
+    return true;
   };
 
   const handleSubmit = async () => {
@@ -63,9 +49,7 @@ export default function EditProfileScreen({ navigation }) {
       setSaving(true);
       const updateData = {
         firstName: formData.firstName.trim() || null,
-        lastName: formData.lastName.trim() || null,
-        email: formData.email.trim(),
-        username: formData.username.trim()
+        lastName: formData.lastName.trim() || null
       };
 
       await api.updateProfile(updateData);
@@ -117,7 +101,7 @@ export default function EditProfileScreen({ navigation }) {
         <View style={styles.header}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
-              {formData.username ? formData.username.substring(0, 2).toUpperCase() : 'U'}
+              {formData.email ? formData.email.substring(0, 2).toUpperCase() : 'U'}
             </Text>
           </View>
           <Text style={styles.headerTitle}>Edit Profile</Text>
@@ -127,39 +111,19 @@ export default function EditProfileScreen({ navigation }) {
         {/* Form */}
         <Surface style={styles.formCard} elevation={1}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Username *</Text>
-            <View style={[styles.inputBox, errors.username && styles.inputBoxError]}>
-              <MaterialCommunityIcons name="account" size={20} color="#9e9e9e" style={styles.inputIcon} />
-              <TextInput
-                value={formData.username}
-                onChangeText={(value) => setFormData({ ...formData, username: value })}
-                style={styles.textInput}
-                mode="flat"
-                underlineColor="transparent"
-                activeUnderlineColor="transparent"
-                placeholder="Enter username"
-              />
-            </View>
-            {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
-          </View>
-
-          <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Email *</Text>
-            <View style={[styles.inputBox, errors.email && styles.inputBoxError]}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={[styles.inputBox, styles.inputBoxDisabled]}>
               <MaterialCommunityIcons name="email" size={20} color="#9e9e9e" style={styles.inputIcon} />
               <TextInput
                 value={formData.email}
-                onChangeText={(value) => setFormData({ ...formData, email: value })}
                 style={styles.textInput}
                 mode="flat"
                 underlineColor="transparent"
                 activeUnderlineColor="transparent"
-                placeholder="Enter email"
-                keyboardType="email-address"
-                autoCapitalize="none"
+                editable={false}
               />
             </View>
-            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+            <Text style={styles.helperText}>Email cannot be changed</Text>
           </View>
 
           <View style={styles.inputWrapper}>
@@ -316,6 +280,15 @@ const styles = StyleSheet.create({
   },
   inputBoxError: {
     borderColor: '#d32f2f'
+  },
+  inputBoxDisabled: {
+    backgroundColor: '#e8e8e8'
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#9e9e9e',
+    marginTop: 4,
+    marginLeft: 4
   },
   inputIcon: {
     marginRight: 8
