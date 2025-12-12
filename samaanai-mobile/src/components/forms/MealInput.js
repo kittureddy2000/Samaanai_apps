@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TextInput, Text, Surface } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing } from '../../theme';
 
 /**
@@ -11,7 +10,6 @@ import { colors, spacing } from '../../theme';
  * @param {string} value - Input value
  * @param {function} onChangeText - Text change handler
  * @param {string} label - Optional custom label
- * @param {string} unit - Unit display (default: 'cal')
  * @param {boolean} editable - Whether input is editable
  */
 const MealInput = ({
@@ -19,10 +17,8 @@ const MealInput = ({
   value,
   onChangeText,
   label,
-  unit = 'cal',
   editable = true,
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
   // Get meal type configuration
   const getMealConfig = () => {
     switch (mealType) {
@@ -60,7 +56,6 @@ const MealInput = ({
           label: 'Exercise',
           color: colors.caloriesBurned,
           emoji: '🏃',
-          unit: 'cal',
         };
       case 'weight':
         return {
@@ -68,7 +63,6 @@ const MealInput = ({
           label: 'Weight',
           color: colors.primary,
           emoji: '⚖️',
-          unit: 'kg',
         };
       default:
         return {
@@ -81,7 +75,6 @@ const MealInput = ({
   };
 
   const config = getMealConfig();
-  const displayUnit = unit === 'cal' && config.unit ? config.unit : unit;
 
   return (
     <Surface style={styles.container} elevation={1}>
@@ -95,8 +88,6 @@ const MealInput = ({
           <TextInput
             value={value}
             onChangeText={onChangeText}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
             keyboardType="numeric"
             mode="flat"
             placeholder="0"
@@ -106,9 +97,6 @@ const MealInput = ({
             activeUnderlineColor={config.color}
             contentStyle={styles.inputContent}
           />
-          {!isFocused && value && value !== '' && (
-            <Text style={styles.unitLabel}>{displayUnit}</Text>
-          )}
         </View>
       </View>
     </Surface>
@@ -154,7 +142,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     width: 140,
-    position: 'relative',
   },
   input: {
     backgroundColor: colors.surfaceVariant,
@@ -165,14 +152,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 18,
     fontWeight: '600',
-    paddingRight: 4,
-  },
-  unitLabel: {
-    position: 'absolute',
-    right: 12,
-    top: 14,
-    color: colors.textSecondary,
-    fontSize: 12,
+    paddingRight: 12,
   },
   // Group styles
   group: {
