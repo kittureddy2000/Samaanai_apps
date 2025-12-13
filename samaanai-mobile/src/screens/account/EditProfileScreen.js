@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator, HelperText } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput, ActivityIndicator, HelperText, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 
 export default function EditProfileScreen({ navigation }) {
@@ -10,8 +11,7 @@ export default function EditProfileScreen({ navigation }) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
-    username: ''
+    email: ''
   });
   const [errors, setErrors] = useState({});
 
@@ -27,8 +27,7 @@ export default function EditProfileScreen({ navigation }) {
       setFormData({
         firstName: data.first_name || '',
         lastName: data.last_name || '',
-        email: data.email || '',
-        username: data.username || ''
+        email: data.email || ''
       });
     } catch (err) {
       console.error('Fetch profile error:', err);
@@ -39,20 +38,8 @@ export default function EditProfileScreen({ navigation }) {
   };
 
   const validate = () => {
-    const newErrors = {};
-
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // No validation needed - email is read-only, names are optional
+    return true;
   };
 
   const handleSubmit = async () => {
@@ -62,9 +49,7 @@ export default function EditProfileScreen({ navigation }) {
       setSaving(true);
       const updateData = {
         firstName: formData.firstName.trim() || null,
-        lastName: formData.lastName.trim() || null,
-        email: formData.email.trim(),
-        username: formData.username.trim()
+        lastName: formData.lastName.trim() || null
       };
 
       await api.updateProfile(updateData);
@@ -81,113 +66,280 @@ export default function EditProfileScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#1976d2" />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
 
+  const InputField = ({ label, value, onChangeText, icon, error, ...props }) => (
+    <View style={styles.inputContainer}>
+      <View style={styles.inputIconContainer}>
+        <MaterialCommunityIcons name={icon} size={20} color="#9e9e9e" />
+      </View>
+      <TextInput
+        label={label}
+        value={value}
+        onChangeText={onChangeText}
+        mode="flat"
+        style={styles.input}
+        underlineColor="transparent"
+        activeUnderlineColor="#1976d2"
+        error={!!error}
+        {...props}
+      />
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.title}>Edit Profile</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>
+              {formData.email ? formData.email.substring(0, 2).toUpperCase() : 'U'}
+            </Text>
+          </View>
+          <Text style={styles.headerTitle}>Edit Profile</Text>
+          <Text style={styles.headerSubtitle}>Update your personal information</Text>
+        </View>
 
-          <TextInput
-            label="Username *"
-            value={formData.username}
-            onChangeText={(value) => setFormData({ ...formData, username: value })}
-            mode="outlined"
-            style={styles.input}
-            error={!!errors.username}
-          />
-          {errors.username && <HelperText type="error">{errors.username}</HelperText>}
+        {/* Form */}
+        <Surface style={styles.formCard} elevation={1}>
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <View style={[styles.inputBox, styles.inputBoxDisabled]}>
+              <MaterialCommunityIcons name="email" size={20} color="#9e9e9e" style={styles.inputIcon} />
+              <TextInput
+                value={formData.email}
+                style={styles.textInput}
+                mode="flat"
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+                editable={false}
+              />
+            </View>
+            <Text style={styles.helperText}>Email cannot be changed</Text>
+          </View>
 
-          <TextInput
-            label="Email *"
-            value={formData.email}
-            onChangeText={(value) => setFormData({ ...formData, email: value })}
-            mode="outlined"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-            error={!!errors.email}
-          />
-          {errors.email && <HelperText type="error">{errors.email}</HelperText>}
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputLabel}>First Name</Text>
+            <View style={styles.inputBox}>
+              <MaterialCommunityIcons name="badge-account" size={20} color="#9e9e9e" style={styles.inputIcon} />
+              <TextInput
+                value={formData.firstName}
+                onChangeText={(value) => setFormData({ ...formData, firstName: value })}
+                style={styles.textInput}
+                mode="flat"
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+                placeholder="Enter first name"
+              />
+            </View>
+          </View>
 
-          <TextInput
-            label="First Name"
-            value={formData.firstName}
-            onChangeText={(value) => setFormData({ ...formData, firstName: value })}
-            mode="outlined"
-            style={styles.input}
-          />
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputLabel}>Last Name</Text>
+            <View style={styles.inputBox}>
+              <MaterialCommunityIcons name="badge-account-outline" size={20} color="#9e9e9e" style={styles.inputIcon} />
+              <TextInput
+                value={formData.lastName}
+                onChangeText={(value) => setFormData({ ...formData, lastName: value })}
+                style={styles.textInput}
+                mode="flat"
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+                placeholder="Enter last name"
+              />
+            </View>
+          </View>
+        </Surface>
 
-          <TextInput
-            label="Last Name"
-            value={formData.lastName}
-            onChangeText={(value) => setFormData({ ...formData, lastName: value })}
-            mode="outlined"
-            style={styles.input}
-          />
-
-          <Button
-            mode="contained"
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.saveButton}
             onPress={handleSubmit}
-            loading={saving}
             disabled={saving}
-            style={styles.submitButton}
+            activeOpacity={0.8}
           >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="check" size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </>
+            )}
+          </TouchableOpacity>
 
-          <Button
-            mode="outlined"
+          <TouchableOpacity
+            style={styles.cancelButton}
             onPress={() => navigation.goBack()}
             disabled={saving}
-            style={styles.cancelButton}
+            activeOpacity={0.8}
           >
-            Cancel
-          </Button>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#f5f6f8'
+  },
+  scrollView: {
+    flex: 1
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: 24,
+    backgroundColor: '#f5f6f8'
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: '#666'
   },
-  card: {
-    margin: 16
+  // Header
+  header: {
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 24,
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#333'
+  avatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#1976d2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16
   },
-  input: {
-    marginBottom: 8
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#fff'
   },
-  submitButton: {
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#212121',
+    marginBottom: 4
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#9e9e9e'
+  },
+  // Form
+  formCard: {
+    margin: 16,
     marginTop: 24,
-    marginBottom: 8
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    padding: 20
+  },
+  inputWrapper: {
+    marginBottom: 20
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#616161',
+    marginBottom: 8,
+    marginLeft: 4
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f6f8',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#e8e8e8',
+    paddingHorizontal: 12
+  },
+  inputBoxError: {
+    borderColor: '#d32f2f'
+  },
+  inputBoxDisabled: {
+    backgroundColor: '#e8e8e8'
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#9e9e9e',
+    marginTop: 4,
+    marginLeft: 4
+  },
+  inputIcon: {
+    marginRight: 8
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    fontSize: 15,
+    height: 48
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#d32f2f',
+    marginTop: 4,
+    marginLeft: 4
+  },
+  // Buttons
+  buttonContainer: {
+    paddingHorizontal: 16,
+    marginTop: 8
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#43a047',
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginBottom: 12
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8
   },
   cancelButton: {
-    marginTop: 8
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0'
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#757575'
+  },
+  bottomSpacer: {
+    height: 40
   }
 });

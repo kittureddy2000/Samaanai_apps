@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
-import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Searchbar, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert, Linking, Dimensions } from 'react-native';
+import { Text, Card, ActivityIndicator, FAB, Menu, Button, Chip, Searchbar, IconButton, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function TodoScreen({ navigation }) {
   const isFocused = useIsFocused();
@@ -14,7 +16,7 @@ export default function TodoScreen({ navigation }) {
   const [allTasks, setAllTasks] = useState([]); // Store all tasks from API
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('pending'); // 'all', 'pending', 'completed', 'overdue' - Default to pending
+  const [filter, setFilter] = useState('pending'); // 'overdue', 'dueThisWeek', 'pending' - Default to pending
   const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'name', 'createdAt'
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -161,21 +163,77 @@ export default function TodoScreen({ navigation }) {
     }
   };
 
+  // Helper to check if date is within this week
+  const isWithinWeek = (dateString) => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const today = new Date();
+    const weekFromNow = new Date();
+    weekFromNow.setDate(today.getDate() + 7);
+    return date >= today && date <= weekFromNow;
+  };
+
+  // Calculate stats for new filters
+  const filterStats = useMemo(() => {
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const weekFromNow = new Date();
+    weekFromNow.setDate(now.getDate() + 7);
+
+    const overdue = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < now && !t.completed).length;
+    const dueThisWeek = allTasks.filter(t => {
+      if (!t.dueDate || t.completed) return false;
+      const dueDate = new Date(t.dueDate);
+      return dueDate >= now && dueDate <= weekFromNow;
+    }).length;
+    const pending = allTasks.filter(t => !t.completed).length;
+    const completed = allTasks.filter(t => t.completed).length;
+    const total = allTasks.length;
+
+    // Today's tasks
+    const dueToday = allTasks.filter(t => {
+      if (!t.dueDate) return false;
+      const dueDate = new Date(t.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
+    }).length;
+
+    const completedToday = allTasks.filter(t => {
+      if (!t.dueDate || !t.completed) return false;
+      const dueDate = new Date(t.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() === today.getTime();
+    }).length;
+
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { overdue, dueThisWeek, pending, completed, total, dueToday, completedToday, completionRate };
+  }, [allTasks]);
+
   // Client-side filtering and sorting using useMemo to prevent re-fetching
   const tasks = useMemo(() => {
     let filteredTasks = [...allTasks];
+    const now = new Date();
+    const weekFromNow = new Date();
+    weekFromNow.setDate(now.getDate() + 7);
 
     // Apply filter
     if (filter === 'pending') {
       filteredTasks = filteredTasks.filter(task => !task.completed);
-    } else if (filter === 'completed') {
-      filteredTasks = filteredTasks.filter(task => task.completed);
     } else if (filter === 'overdue') {
       filteredTasks = filteredTasks.filter(task => {
-        return task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+        return task.dueDate && new Date(task.dueDate) < now && !task.completed;
+      });
+    } else if (filter === 'dueThisWeek') {
+      filteredTasks = filteredTasks.filter(task => {
+        if (!task.dueDate || task.completed) return false;
+        const dueDate = new Date(task.dueDate);
+        return dueDate >= now && dueDate <= weekFromNow;
       });
     }
-    // 'all' includes everything
 
     // Apply search query
     if (searchQuery.trim()) {
@@ -354,10 +412,98 @@ export default function TodoScreen({ navigation }) {
     );
   };
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header Section */}
-      <View style={styles.headerSection}>
+      {/* Dashboard Summary */}
+      <View style={styles.dashboardHeader}>
+        <View style={styles.greetingRow}>
+          <View>
+            <Text style={styles.greetingText}>{getGreeting()}</Text>
+            <Text style={styles.dateText}>{format(new Date(), 'EEEE, MMMM d')}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            {/* Microsoft Integration Button */}
+            <TouchableOpacity
+              onPress={microsoftConnected ? handleSyncMicrosoft : handleConnectMicrosoft}
+              disabled={microsoftSyncing}
+              style={[styles.integrationButton, microsoftConnected && styles.integrationButtonConnected]}
+            >
+              <MaterialCommunityIcons
+                name={microsoftSyncing ? "sync" : "microsoft"}
+                size={18}
+                color={microsoftConnected ? "#00A4EF" : "#999"}
+              />
+            </TouchableOpacity>
+            {/* Google Integration Button */}
+            <TouchableOpacity
+              onPress={googleConnected ? handleSyncGoogle : handleConnectGoogle}
+              disabled={googleSyncing}
+              style={[styles.integrationButton, googleConnected && styles.integrationButtonConnected]}
+            >
+              <MaterialCommunityIcons
+                name={googleSyncing ? "sync" : "google"}
+                size={18}
+                color={googleConnected ? "#DB4437" : "#999"}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Stats Cards - Clickable filters */}
+        <View style={styles.statsRow}>
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'overdue' && styles.statCardActive]}
+            onPress={() => setFilter(filter === 'overdue' ? 'pending' : 'overdue')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'overdue' ? '#fff' : '#ffebee' }]}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#d32f2f" />
+            </View>
+            <Text style={[styles.statNumber, { color: '#d32f2f' }]}>{filterStats.overdue}</Text>
+            <Text style={[styles.statLabel, filter === 'overdue' && styles.statLabelActive]}>Late</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'dueThisWeek' && styles.statCardActiveWeek]}
+            onPress={() => setFilter(filter === 'dueThisWeek' ? 'pending' : 'dueThisWeek')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'dueThisWeek' ? '#fff' : '#fff3e0' }]}>
+              <MaterialCommunityIcons name="calendar-week" size={14} color="#ff9800" />
+            </View>
+            <Text style={[styles.statNumber, { color: '#ff9800' }]}>{filterStats.dueThisWeek}</Text>
+            <Text style={[styles.statLabel, filter === 'dueThisWeek' && styles.statLabelActive]}>Week</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.statCard, filter === 'pending' && styles.statCardActivePending]}
+            onPress={() => setFilter('pending')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: filter === 'pending' ? '#fff' : '#e3f2fd' }]}>
+              <MaterialCommunityIcons name="format-list-checks" size={14} color="#1976d2" />
+            </View>
+            <Text style={[styles.statNumber, { color: '#1976d2' }]}>{filterStats.pending}</Text>
+            <Text style={[styles.statLabel, filter === 'pending' && styles.statLabelActive]}>Todo</Text>
+          </TouchableOpacity>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconCircle, { backgroundColor: '#e8f5e9' }]}>
+              <MaterialCommunityIcons name="check-circle-outline" size={14} color="#43a047" />
+            </View>
+            <Text style={[styles.statNumber, { color: '#43a047' }]}>{filterStats.completionRate}%</Text>
+            <Text style={styles.statLabel}>Done</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Search Section */}
+      <View style={styles.searchSection}>
         <View style={styles.searchRow}>
           <Searchbar
             placeholder="Search tasks..."
@@ -368,106 +514,35 @@ export default function TodoScreen({ navigation }) {
             icon="magnify"
             clearIcon={searchQuery ? "close" : undefined}
           />
-          <View style={styles.headerIcons}>
-            {microsoftConnected && (
+          <Menu
+            visible={sortMenuVisible}
+            onDismiss={() => setSortMenuVisible(false)}
+            anchor={
               <TouchableOpacity
-                onPress={handleSyncMicrosoft}
-                disabled={microsoftSyncing}
-                style={styles.syncIconButton}
+                onPress={() => setSortMenuVisible(true)}
+                style={styles.sortIconButton}
               >
-                <MaterialCommunityIcons
-                  name={microsoftSyncing ? "sync" : "microsoft"}
-                  size={22}
-                  color={microsoftSyncing ? "#999" : "#00A4EF"}
-                />
+                <MaterialCommunityIcons name="sort" size={20} color="#666" />
               </TouchableOpacity>
-            )}
-            {googleConnected && (
-              <TouchableOpacity
-                onPress={handleSyncGoogle}
-                disabled={googleSyncing}
-                style={styles.syncIconButton}
-              >
-                <MaterialCommunityIcons
-                  name={googleSyncing ? "sync" : "google"}
-                  size={22}
-                  color={googleSyncing ? "#999" : "#DB4437"}
-                />
-              </TouchableOpacity>
-            )}
-            <Menu
-              visible={sortMenuVisible}
-              onDismiss={() => setSortMenuVisible(false)}
-              anchor={
-                <TouchableOpacity
-                  onPress={() => setSortMenuVisible(true)}
-                  style={styles.sortIconButton}
-                >
-                  <MaterialCommunityIcons name="sort" size={22} color="#666" />
-                </TouchableOpacity>
-              }
-            >
-              <Menu.Item
-                onPress={() => {
-                  setSortBy('dueDate');
-                  setSortMenuVisible(false);
-                }}
-                title="Sort by Due Date"
-                leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
-              />
-              <Menu.Item
-                onPress={() => {
-                  setSortBy('name');
-                  setSortMenuVisible(false);
-                }}
-                title="Sort by Name"
-                leadingIcon={sortBy === 'name' ? 'check' : undefined}
-              />
-              <Menu.Item
-                onPress={() => {
-                  setSortBy('createdAt');
-                  setSortMenuVisible(false);
-                }}
-                title="Sort by Created Date"
-                leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
-              />
-            </Menu>
-          </View>
+            }
+          >
+            <Menu.Item
+              onPress={() => { setSortBy('dueDate'); setSortMenuVisible(false); }}
+              title="Sort by Due Date"
+              leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+            />
+            <Menu.Item
+              onPress={() => { setSortBy('name'); setSortMenuVisible(false); }}
+              title="Sort by Name"
+              leadingIcon={sortBy === 'name' ? 'check' : undefined}
+            />
+            <Menu.Item
+              onPress={() => { setSortBy('createdAt'); setSortMenuVisible(false); }}
+              title="Sort by Created Date"
+              leadingIcon={sortBy === 'createdAt' ? 'check' : undefined}
+            />
+          </Menu>
         </View>
-
-        {/* Stats Chips */}
-        {stats && (
-          <View style={styles.statsChipsContainer}>
-            <TouchableOpacity
-              style={[styles.statChip, filter === 'all' && styles.statChipActive]}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={[styles.statChipValue, filter === 'all' && styles.statChipValueActive]}>{stats.total}</Text>
-              <Text style={[styles.statChipLabel, filter === 'all' && styles.statChipLabelActive]}>All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.statChip, filter === 'pending' && styles.statChipActive]}
-              onPress={() => setFilter('pending')}
-            >
-              <Text style={[styles.statChipValue, styles.pendingValue, filter === 'pending' && styles.statChipValueActive]}>{stats.pending}</Text>
-              <Text style={[styles.statChipLabel, filter === 'pending' && styles.statChipLabelActive]}>Pending</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.statChip, filter === 'completed' && styles.statChipActive]}
-              onPress={() => setFilter('completed')}
-            >
-              <Text style={[styles.statChipValue, styles.completedValue, filter === 'completed' && styles.statChipValueActive]}>{stats.completed}</Text>
-              <Text style={[styles.statChipLabel, filter === 'completed' && styles.statChipLabelActive]}>Done</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.statChip, filter === 'overdue' && styles.statChipActive]}
-              onPress={() => setFilter('overdue')}
-            >
-              <Text style={[styles.statChipValue, styles.overdueValue, filter === 'overdue' && styles.statChipValueActive]}>{stats.overdue}</Text>
-              <Text style={[styles.statChipLabel, filter === 'overdue' && styles.statChipLabelActive]}>Overdue</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       {/* Tasks List */}
@@ -522,115 +597,157 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: 8
   },
-  headerSection: {
+  // Dashboard Header - Compact version
+  dashboardHeader: {
     backgroundColor: '#fff',
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e8e8e8',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  greetingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#212121'
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 2
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent'
+  },
+  statCardActive: {
+    backgroundColor: '#ffebee',
+    borderColor: '#d32f2f'
+  },
+  statCardActiveWeek: {
+    backgroundColor: '#fff3e0',
+    borderColor: '#ff9800'
+  },
+  statCardActivePending: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#1976d2'
+  },
+  statIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#212121'
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#9e9e9e',
+    fontWeight: '500',
+    marginLeft: 2
+  },
+  statLabelActive: {
+    fontWeight: '700'
+  },
+  // Search Section - Compact
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12
+    gap: 8,
+    marginBottom: 10
   },
   searchBar: {
     flex: 1,
-    height: 42,
+    height: 38,
     elevation: 0,
-    backgroundColor: '#f5f6f8',
-    borderRadius: 21
+    backgroundColor: '#fff',
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: '#e8e8e8'
   },
   searchInput: {
-    fontSize: 14,
+    fontSize: 13,
     minHeight: 0,
     paddingVertical: 0
   },
-  headerIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  syncIconButton: {
-    padding: 8,
-    borderRadius: 22,
-    backgroundColor: '#f5f6f8'
-  },
-  sortIconButton: {
-    padding: 8,
-    borderRadius: 22,
-    backgroundColor: '#f5f6f8'
-  },
-  statsChipsContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between'
-  },
-  statChip: {
-    flex: 1,
-    backgroundColor: '#f5f6f8',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+  integrationButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'transparent'
+    borderColor: '#e0e0e0'
   },
-  statChipActive: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3'
+  integrationButtonConnected: {
+    backgroundColor: '#fff',
+    borderColor: '#e0e0e0'
   },
-  statChipValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1976d2',
-    marginBottom: 2
-  },
-  statChipValueActive: {
-    color: '#1976d2'
-  },
-  pendingValue: {
-    color: '#ff9800'
-  },
-  completedValue: {
-    color: '#4caf50'
-  },
-  overdueValue: {
-    color: '#d32f2f'
-  },
-  statChipLabel: {
-    fontSize: 11,
-    color: '#666',
-    fontWeight: '500'
-  },
-  statChipLabelActive: {
-    color: '#1976d2',
-    fontWeight: '600'
+  sortIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e8e8e8'
   },
   tasksList: {
     flex: 1,
-    paddingTop: 8
+    paddingTop: 2
   },
   taskItem: {
     backgroundColor: '#fff',
     marginHorizontal: 12,
     marginVertical: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e8e8e8',
+    borderColor: '#eaeaea',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
     elevation: 1
   },
   taskRow: {
@@ -638,14 +755,14 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   checkboxContainer: {
-    marginRight: 14
+    marginRight: 12
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2.5,
-    borderColor: '#bdbdbd',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#d0d0d0',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff'
@@ -656,23 +773,24 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     flex: 1,
-    marginRight: 12
+    marginRight: 10
   },
   taskName: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#212121',
-    marginBottom: 4,
-    lineHeight: 20
+    marginBottom: 3,
+    lineHeight: 18
   },
   completedText: {
     color: '#9e9e9e',
-    textDecorationLine: 'line-through'
+    textDecorationLine: 'line-through',
+    fontWeight: '400'
   },
   dueDateText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#757575',
-    marginTop: 2
+    marginTop: 1
   },
   completedDueDate: {
     color: '#bdbdbd',
@@ -680,15 +798,15 @@ const styles = StyleSheet.create({
   },
   overdueText: {
     color: '#e53935',
-    fontWeight: '500'
+    fontWeight: '600'
   },
   taskRightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: 8
   },
   integrationIcon: {
-    marginRight: 2
+    marginRight: 0
   },
   priorityDot: {
     width: 10,
@@ -698,8 +816,11 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    backgroundColor: '#fff'
+    paddingVertical: 80,
+    marginHorizontal: 12,
+    marginTop: 20,
+    backgroundColor: '#fff',
+    borderRadius: 16
   },
   emptyText: {
     fontSize: 18,

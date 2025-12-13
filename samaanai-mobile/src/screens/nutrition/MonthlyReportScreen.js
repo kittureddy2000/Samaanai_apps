@@ -1,8 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Card, Title, Button, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { Text, Button, ActivityIndicator, Surface } from 'react-native-paper';
+import {
+  VictoryBar,
+  VictoryChart,
+  VictoryAxis,
+  VictoryGroup,
+  isVictoryAvailable,
+} from '../../components/charts';
 import { api } from '../../services/api';
 import { format, getYear, getMonth } from 'date-fns';
+import { colors, spacing } from '../../theme';
+import { StatCard, StatCardRow, ChartCard, ChartLegend } from '../../components/common';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Web fallback chart component
+const WebBarChart = ({ data }) => {
+  const maxValue = Math.max(...data.flatMap((d) => [d.food || 0, d.exercise || 0]), 1);
+  const chartHeight = 160;
+
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={webChartStyles.container}>
+        <View style={[webChartStyles.chart, { minWidth: data.length * 28 }]}>
+          {data.map((item, index) => (
+            <View key={index} style={webChartStyles.barGroup}>
+              <View style={webChartStyles.barsContainer}>
+                <View
+                  style={[
+                    webChartStyles.bar,
+                    {
+                      height: Math.max(((item.food || 0) / maxValue) * chartHeight, 4),
+                      backgroundColor: colors.caloriesConsumed,
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    webChartStyles.bar,
+                    {
+                      height: Math.max(((item.exercise || 0) / maxValue) * chartHeight, 4),
+                      backgroundColor: colors.caloriesBurned,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={webChartStyles.label}>{item.day}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
+const webChartStyles = StyleSheet.create({
+  container: { padding: spacing.xs },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', height: 180, paddingBottom: 20 },
+  barGroup: { alignItems: 'center', width: 24, marginHorizontal: 2 },
+  barsContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  bar: { width: 10, borderTopLeftRadius: 3, borderTopRightRadius: 3, minHeight: 4 },
+  label: { marginTop: 6, fontSize: 9, color: colors.textSecondary },
+});
 
 const parseLocalDate = (dateString) => {
   const [year, month, day] = dateString.split('-').map(Number);
@@ -36,7 +96,7 @@ export default function MonthlyReportScreen({ navigation }) {
   }, [currentMonth]);
 
   const handlePreviousMonth = () => {
-    setCurrentMonth(prev => {
+    setCurrentMonth((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(newDate.getMonth() - 1);
       return newDate;
@@ -44,7 +104,7 @@ export default function MonthlyReportScreen({ navigation }) {
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth(prev => {
+    setCurrentMonth((prev) => {
       const newDate = new Date(prev);
       newDate.setMonth(newDate.getMonth() + 1);
       return newDate;
@@ -52,60 +112,48 @@ export default function MonthlyReportScreen({ navigation }) {
   };
 
   const prepareChartData = () => {
-    if (!monthlyData || !monthlyData.daily_entries || monthlyData.daily_entries.length === 0) {
-      return null;
-    }
+    if (!monthlyData?.daily_entries?.length) return null;
 
-    const sortedEntries = [...monthlyData.daily_entries].sort((a, b) =>
-      parseLocalDate(a.date) - parseLocalDate(b.date)
+    const sortedEntries = [...monthlyData.daily_entries].sort(
+      (a, b) => parseLocalDate(a.date) - parseLocalDate(b.date)
     );
 
-    const labels = sortedEntries.map(entry => format(parseLocalDate(entry.date), 'd'));
-
-    // Consumed = Food - Exercise
-    const consumedData = sortedEntries.map(entry => {
-      const food = entry.total_food_calories || 0;
-      const exercise = entry.total_exercise_calories || 0;
-      return Math.max(0, food - exercise);
-    });
-
-    // Net calories (what's left after accounting for BMR goal)
-    const netData = sortedEntries.map(entry => {
-      const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      return hasData ? Math.abs(entry.net_calories || 0) : 0;
-    });
-
-    return { labels, consumedData, netData };
+    return sortedEntries.map((entry) => ({
+      day: format(parseLocalDate(entry.date), 'd'),
+      food: entry.total_food_calories || 0,
+      exercise: entry.total_exercise_calories || 0,
+    }));
   };
 
   const calculateTotals = () => {
-    if (!monthlyData || !monthlyData.daily_entries) {
+    if (!monthlyData?.daily_entries) {
       return { totalFood: 0, totalExercise: 0, netBalance: 0, daysLogged: 0 };
     }
 
     let totalFood = 0;
     let totalExercise = 0;
-    let netBalance = 0;
+    let daysLogged = 0;
 
-    monthlyData.daily_entries.forEach(entry => {
+    monthlyData.daily_entries.forEach((entry) => {
       totalFood += entry.total_food_calories || 0;
       totalExercise += entry.total_exercise_calories || 0;
-      const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      netBalance += hasData ? (entry.net_calories || 0) : 0;
+      if (entry.total_food_calories > 0 || entry.total_exercise_calories > 0) {
+        daysLogged++;
+      }
     });
 
     return {
       totalFood,
       totalExercise,
-      netBalance,
-      daysLogged: monthlyData.daily_entries.length
+      netBalance: totalFood - totalExercise,
+      daysLogged,
     };
   };
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading monthly data...</Text>
       </View>
     );
@@ -124,100 +172,155 @@ export default function MonthlyReportScreen({ navigation }) {
 
   const chartData = prepareChartData();
   const totals = calculateTotals();
+  const daysInMonth = new Date(getYear(currentMonth), getMonth(currentMonth) + 1, 0).getDate();
+  const avgDaily = totals.daysLogged > 0 ? Math.round(totals.netBalance / totals.daysLogged) : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Month Navigation */}
-      <View style={styles.monthSelector}>
-        <Button mode="outlined" onPress={handlePreviousMonth}>←</Button>
-        <Text style={styles.monthText}>{format(currentMonth, 'MMMM yyyy')}</Text>
-        <Button mode="outlined" onPress={handleNextMonth}>→</Button>
+      <Surface style={styles.monthSelector} elevation={1}>
+        <Button mode="text" onPress={handlePreviousMonth} icon="chevron-left" compact>
+          Prev
+        </Button>
+        <View style={styles.monthDisplay}>
+          <Text style={styles.monthText}>{format(currentMonth, 'MMMM yyyy')}</Text>
+        </View>
+        <Button mode="text" onPress={handleNextMonth} icon="chevron-right" compact contentStyle={styles.nextButton}>
+          Next
+        </Button>
+      </Surface>
+
+      {/* Summary Stats */}
+      <View style={styles.section}>
+        <StatCardRow>
+          <StatCard
+            label="Food"
+            value={totals.totalFood}
+            unit="cal"
+            icon="food"
+            iconColor={colors.caloriesConsumed}
+            valueColor={colors.caloriesConsumed}
+            variant="compact"
+          />
+          <StatCard
+            label="Exercise"
+            value={totals.totalExercise}
+            unit="cal"
+            icon="run"
+            iconColor={colors.caloriesBurned}
+            valueColor={colors.caloriesBurned}
+            variant="compact"
+          />
+          <StatCard
+            label="Net"
+            value={totals.netBalance}
+            unit="cal"
+            icon="calculator"
+            iconColor={colors.netCalories}
+            valueColor={totals.netBalance > 60000 ? colors.surplus : colors.deficit}
+            variant="compact"
+          />
+        </StatCardRow>
       </View>
 
-      {/* Summary Card */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Monthly Calorie Summary</Title>
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryValue}>{totals.totalFood}</Text>
-              <Text style={styles.summaryLabel}>Total Food</Text>
-            </View>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryValue}>{totals.totalExercise}</Text>
-              <Text style={styles.summaryLabel}>Total Exercise</Text>
-            </View>
+      {/* Insights */}
+      <Surface style={styles.insightCard} elevation={1}>
+        <View style={styles.insightRow}>
+          <View style={styles.insightItem}>
+            <Text style={styles.insightValue}>
+              {totals.daysLogged}/{daysInMonth}
+            </Text>
+            <Text style={styles.insightLabel}>Days Logged</Text>
           </View>
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryBox}>
-              <Text style={[styles.summaryValue, totals.netBalance >= 0 ? styles.positive : styles.negative]}>
-                {totals.netBalance}
-              </Text>
-              <Text style={styles.summaryLabel}>Net Balance</Text>
-            </View>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryValue}>{totals.daysLogged}</Text>
-              <Text style={styles.summaryLabel}>Logged Days</Text>
-            </View>
+          <View style={styles.insightDivider} />
+          <View style={styles.insightItem}>
+            <Text style={[styles.insightValue, { color: avgDaily > 2000 ? colors.surplus : colors.deficit }]}>
+              {avgDaily}
+            </Text>
+            <Text style={styles.insightLabel}>Avg/Day</Text>
           </View>
-        </Card.Content>
-      </Card>
+        </View>
+      </Surface>
 
-      {/* Chart Card */}
-      {chartData && chartData.labels.length > 0 ? (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Daily Calorie Trends</Title>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.groupedBarChart}>
-                <View style={styles.chartContainer}>
-                  <View style={styles.barsContainer}>
-                    {chartData.labels.map((label, index) => {
-                      const consumed = chartData.consumedData[index];
-                      const net = chartData.netData[index];
-                      const maxValue = Math.max(...chartData.consumedData, ...chartData.netData);
-                      const consumedHeight = (consumed / maxValue) * 120;
-                      const netHeight = (net / maxValue) * 120;
-
-                      return (
-                        <View key={index} style={styles.barGroup}>
-                          <View style={styles.barPair}>
-                            <View style={styles.barWrapper}>
-                              <View style={[styles.bar, styles.consumedBar, { height: consumedHeight }]} />
-                              <Text style={styles.barValue}>{consumed}</Text>
-                            </View>
-                            <View style={styles.barWrapper}>
-                              <View style={[styles.bar, styles.netBar, { height: netHeight }]} />
-                              <Text style={styles.barValue}>{net}</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.barLabel}>{label}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              </View>
-            </ScrollView>
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#2196F3' }]} />
-                <Text style={styles.legendText}>Consumed (Food-Exercise)</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FF9800' }]} />
-                <Text style={styles.legendText}>Net Calories</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+      {/* Chart */}
+      {chartData && chartData.length > 0 ? (
+        <View style={styles.section}>
+          <ChartCard
+            title="Daily Breakdown"
+            legend={
+              <ChartLegend
+                items={[
+                  { label: 'Food', color: colors.caloriesConsumed },
+                  { label: 'Exercise', color: colors.caloriesBurned },
+                ]}
+              />
+            }
+          >
+            {isVictoryAvailable ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <VictoryChart
+                  width={Math.max(SCREEN_WIDTH - spacing.lg * 2, chartData.length * 25)}
+                  height={220}
+                  domainPadding={{ x: 15 }}
+                  padding={{ top: 20, bottom: 40, left: 50, right: 20 }}
+                >
+                  <VictoryAxis
+                    dependentAxis
+                    tickFormat={(t) => (t >= 1000 ? `${t / 1000}k` : t)}
+                    style={{
+                      axis: { stroke: colors.border },
+                      tickLabels: { fill: colors.textSecondary, fontSize: 10 },
+                      grid: { stroke: colors.divider, strokeDasharray: '4,4' },
+                    }}
+                  />
+                  <VictoryAxis
+                    style={{
+                      axis: { stroke: colors.border },
+                      tickLabels: { fill: colors.textSecondary, fontSize: 9 },
+                    }}
+                  />
+                  <VictoryGroup offset={10} colorScale={[colors.caloriesConsumed, colors.caloriesBurned]}>
+                    <VictoryBar data={chartData} x="day" y="food" barWidth={8} cornerRadius={{ top: 3 }} />
+                    <VictoryBar data={chartData} x="day" y="exercise" barWidth={8} cornerRadius={{ top: 3 }} />
+                  </VictoryGroup>
+                </VictoryChart>
+              </ScrollView>
+            ) : (
+              <WebBarChart data={chartData} />
+            )}
+          </ChartCard>
+        </View>
       ) : (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text style={styles.emptyText}>No data available for this month.</Text>
-            <Text style={styles.emptySubText}>Start logging your food and exercise!</Text>
-          </Card.Content>
-        </Card>
+        <Surface style={styles.emptyCard} elevation={1}>
+          <Text style={styles.emptyText}>No data available for this month.</Text>
+          <Text style={styles.emptyHint}>Start logging your meals to see your progress!</Text>
+        </Surface>
+      )}
+
+      {/* Monthly Summary Card */}
+      {totals.daysLogged > 0 && (
+        <Surface style={styles.summaryCard} elevation={1}>
+          <Text style={styles.summaryTitle}>Monthly Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Food Calories</Text>
+            <Text style={[styles.summaryValue, { color: colors.caloriesConsumed }]}>
+              {totals.totalFood.toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Exercise Burned</Text>
+            <Text style={[styles.summaryValue, { color: colors.caloriesBurned }]}>
+              {totals.totalExercise.toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Net Calories</Text>
+            <Text style={[styles.summaryValue, { color: totals.netBalance > 60000 ? colors.surplus : colors.deficit }]}>
+              {totals.netBalance.toLocaleString()}
+            </Text>
+          </View>
+        </Surface>
       )}
     </ScrollView>
   );
@@ -226,153 +329,130 @@ export default function MonthlyReportScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: spacing.lg,
+    backgroundColor: colors.background,
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: spacing.md,
     fontSize: 16,
-    color: '#666'
+    color: colors.textSecondary,
   },
   errorText: {
     fontSize: 16,
-    color: '#d32f2f',
+    color: colors.error,
     textAlign: 'center',
-    marginBottom: 16
+    marginBottom: spacing.md,
   },
   retryButton: {
-    marginTop: 8
+    marginTop: spacing.sm,
   },
   monthSelector: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0'
+    padding: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  monthDisplay: {
+    flex: 1,
+    alignItems: 'center',
   },
   monthText: {
     fontSize: 18,
-    fontWeight: '600'
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
-  card: {
-    margin: 16,
-    marginBottom: 8
+  nextButton: {
+    flexDirection: 'row-reverse',
   },
-  summaryGrid: {
+  section: {
+    padding: spacing.md,
+  },
+  insightCard: {
+    marginHorizontal: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  insightRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16
-  },
-  summaryBox: {
     alignItems: 'center',
-    flex: 1
   },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976d2'
+  insightItem: {
+    flex: 1,
+    alignItems: 'center',
   },
-  summaryLabel: {
+  insightDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.divider,
+  },
+  insightValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  insightLabel: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    textAlign: 'center'
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
-  positive: {
-    color: '#d32f2f'
-  },
-  negative: {
-    color: '#4caf50'
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16
-  },
-  groupedBarChart: {
-    paddingVertical: 16,
-    paddingHorizontal: 8
-  },
-  chartContainer: {
-    height: 180
-  },
-  barsContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    height: 140,
-    gap: 12
-  },
-  barGroup: {
+  emptyCard: {
+    margin: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
     alignItems: 'center',
-    minWidth: 40
-  },
-  barPair: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 3,
-    marginBottom: 8
-  },
-  barWrapper: {
-    alignItems: 'center',
-    width: 18
-  },
-  bar: {
-    width: 16,
-    borderRadius: 3,
-    minHeight: 2
-  },
-  consumedBar: {
-    backgroundColor: '#2196F3'
-  },
-  netBar: {
-    backgroundColor: '#FF9800'
-  },
-  barValue: {
-    fontSize: 9,
-    color: '#666',
-    marginTop: 2
-  },
-  barLabel: {
-    fontSize: 10,
-    color: '#666',
-    marginTop: 4
-  },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 16
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 8
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 6
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#666'
   },
   emptyText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 16,
+    color: colors.textSecondary,
     textAlign: 'center',
-    paddingVertical: 12
   },
-  emptySubText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center'
-  }
+  emptyHint: {
+    fontSize: 14,
+    color: colors.textHint,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  summaryCard: {
+    margin: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: colors.divider,
+    marginVertical: spacing.sm,
+  },
 });

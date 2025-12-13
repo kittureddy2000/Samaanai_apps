@@ -1,27 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform, Image, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, TextInput, ActivityIndicator, HelperText, IconButton, Menu } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, Platform, Image, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { Text, TextInput, ActivityIndicator, IconButton, Switch } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { api } from '../../services/api';
 import { format, addDays, getDay } from 'date-fns';
-import VoiceInputButton from '../../components/VoiceInputButton';
 
-// Helper function to get end of current week (Sunday)
 const getEndOfWeek = () => {
   const today = new Date();
-  const jsDayOfWeek = getDay(today); // 0 = Sunday, 6 = Saturday
+  const jsDayOfWeek = getDay(today);
   const daysUntilSunday = jsDayOfWeek === 0 ? 0 : 7 - jsDayOfWeek;
   return addDays(today, daysUntilSunday);
 };
+
+const REMINDER_OPTIONS = [
+  { label: 'None', value: '', icon: 'bell-off-outline' },
+  { label: 'Daily', value: 'daily', icon: 'calendar-today' },
+  { label: 'Weekly', value: 'weekly', icon: 'calendar-week' },
+  { label: 'Monthly', value: 'monthly', icon: 'calendar-month' },
+  { label: 'Yearly', value: 'yearly', icon: 'calendar-star' },
+];
 
 export default function AddEditTaskScreen({ route, navigation }) {
   const { task } = route.params || {};
   const isEdit = !!task;
 
-  // Calculate default due date (end of week) for new tasks
   const defaultDueDate = isEdit ? (task.dueDate || '') : format(getEndOfWeek(), 'yyyy-MM-dd');
   const defaultSelectedDate = isEdit
     ? (task?.dueDate ? new Date(task.dueDate) : new Date())
@@ -36,34 +41,20 @@ export default function AddEditTaskScreen({ route, navigation }) {
     imageUrl: task?.imageUrl || ''
   });
   const [errors, setErrors] = useState({});
-  const [menuVisible, setMenuVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(defaultSelectedDate);
   const [selectedImage, setSelectedImage] = useState(task?.imageUrl || null);
   const [selectedDocument, setSelectedDocument] = useState(null);
-
-  const reminderTypes = [
-    { label: 'None', value: '' },
-    { label: 'Daily', value: 'daily' },
-    { label: 'Weekly', value: 'weekly' },
-    { label: 'Monthly', value: 'monthly' },
-    { label: 'Yearly', value: 'yearly' }
-  ];
+  const [showReminderOptions, setShowReminderOptions] = useState(false);
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
     const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
-      Alert.alert('Permission needed', 'Camera and photo library permissions are required to use this feature.');
-      return false;
-    }
-    return true;
+    return cameraStatus === 'granted' && mediaStatus === 'granted';
   };
 
   const pickImageFromGallery = async () => {
     if (Platform.OS === 'web') {
-      // Web-specific image picker
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -81,26 +72,25 @@ export default function AddEditTaskScreen({ route, navigation }) {
       input.click();
     } else {
       const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
-
+      if (!hasPermission) {
+        Alert.alert('Permission needed', 'Camera and photo library permissions are required.');
+        return;
+      }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
         base64: true
       });
-
       if (!result.canceled && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        setSelectedImage(imageUri);
-        setFormData({ ...formData, imageUrl: imageUri });
+        setSelectedImage(result.assets[0].uri);
+        setFormData({ ...formData, imageUrl: result.assets[0].uri });
       }
     }
   };
 
   const takePhoto = async () => {
     if (Platform.OS === 'web') {
-      // Web doesn't support camera directly, use file input with capture
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
@@ -119,18 +109,18 @@ export default function AddEditTaskScreen({ route, navigation }) {
       input.click();
     } else {
       const hasPermission = await requestPermissions();
-      if (!hasPermission) return;
-
+      if (!hasPermission) {
+        Alert.alert('Permission needed', 'Camera permissions are required.');
+        return;
+      }
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         quality: 0.8,
         base64: true
       });
-
       if (!result.canceled && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        setSelectedImage(imageUri);
-        setFormData({ ...formData, imageUrl: imageUri });
+        setSelectedImage(result.assets[0].uri);
+        setFormData({ ...formData, imageUrl: result.assets[0].uri });
       }
     }
   };
@@ -142,7 +132,6 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
   const pickDocument = async () => {
     if (Platform.OS === 'web') {
-      // Web-specific file picker using HTML input
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '*/*';
@@ -164,25 +153,18 @@ export default function AddEditTaskScreen({ route, navigation }) {
       };
       input.click();
     } else {
-      // Mobile: Use expo-document-picker
       try {
         const result = await DocumentPicker.getDocumentAsync({
           type: '*/*',
           copyToCacheDirectory: true
         });
-
         if (!result.canceled && result.assets && result.assets[0]) {
           const file = result.assets[0];
-
-          // Check if the picked file is an image
           const isImage = file.mimeType?.startsWith('image/');
-
           if (isImage) {
-            // If it's an image, show it as image preview
             setSelectedImage(file.uri);
             setFormData({ ...formData, imageUrl: file.uri });
           } else {
-            // Otherwise, show as document
             setSelectedDocument({
               uri: file.uri,
               name: file.name,
@@ -193,8 +175,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
           }
         }
       } catch (err) {
-        console.error('Error picking document:', err);
-        Alert.alert('Error', 'Failed to pick document. Please try again.');
+        Alert.alert('Error', 'Failed to pick document.');
       }
     }
   };
@@ -208,14 +189,12 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
   const getFileIcon = (mimeType) => {
     if (!mimeType) return 'file-document';
-
     if (mimeType.includes('pdf')) return 'file-pdf-box';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'file-word-box';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'file-excel-box';
-    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'file-powerpoint-box';
+    if (mimeType.includes('word')) return 'file-word-box';
+    if (mimeType.includes('excel')) return 'file-excel-box';
+    if (mimeType.includes('powerpoint')) return 'file-powerpoint-box';
     if (mimeType.includes('text')) return 'file-document-outline';
-    if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'zip-box';
-
+    if (mimeType.includes('zip')) return 'zip-box';
     return 'file-document';
   };
 
@@ -240,37 +219,13 @@ export default function AddEditTaskScreen({ route, navigation }) {
     }
   };
 
-  const closeDatePicker = () => {
-    setShowDatePicker(false);
-  };
-
   const validate = () => {
     const newErrors = {};
-
     if (!formData.name.trim()) {
       newErrors.name = 'Task name is required';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleVoiceCommand = (parsedCommand, transcript) => {
-    if (parsedCommand.type === 'task') {
-      // Populate form with voice command data
-      setFormData({
-        ...formData,
-        name: parsedCommand.name || formData.name,
-        description: parsedCommand.description || formData.description,
-        dueDate: parsedCommand.dueDate || formData.dueDate,
-        reminderType: parsedCommand.reminderType || formData.reminderType
-      });
-
-      // Update selected date if due date was parsed
-      if (parsedCommand.dueDate) {
-        setSelectedDate(new Date(parsedCommand.dueDate));
-      }
-    }
   };
 
   const handleSubmit = async () => {
@@ -288,356 +243,489 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
       if (isEdit) {
         await api.updateTask(task.id, taskData);
-        Alert.alert('Success', 'Task updated successfully');
       } else {
         await api.createTask(taskData);
-        Alert.alert('Success', 'Task created successfully');
       }
-
       navigation.goBack();
     } catch (err) {
-      console.error('Save task error:', err);
       Alert.alert('Error', err.response?.data?.error || 'Failed to save task');
     } finally {
       setLoading(false);
     }
   };
 
+  const selectedReminder = REMINDER_OPTIONS.find(r => r.value === formData.reminderType) || REMINDER_OPTIONS[0];
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <IconButton
-          icon="close"
-          size={24}
-          onPress={() => navigation.goBack()}
-        />
-        <Text style={styles.headerTitle}>{isEdit ? 'Edit Task' : 'Add Task'}</Text>
-        <VoiceInputButton
-          onCommandParsed={handleVoiceCommand}
-          commandType="task"
-        />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#666" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{isEdit ? 'Edit Task' : 'New Task'}</Text>
+        <View style={styles.headerRight} />
       </View>
 
-      <ScrollView style={styles.content}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <TextInput
-              label="Task Name *"
-              value={formData.name}
-              onChangeText={(value) => setFormData({ ...formData, name: value })}
-              mode="outlined"
-              style={styles.input}
-              error={!!errors.name}
-            />
-            {errors.name && <HelperText type="error">{errors.name}</HelperText>}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Task Name Input */}
+        <View style={styles.inputSection}>
+          <TextInput
+            placeholder="What needs to be done?"
+            value={formData.name}
+            onChangeText={(value) => setFormData({ ...formData, name: value })}
+            style={styles.titleInput}
+            mode="flat"
+            underlineColor="transparent"
+            activeUnderlineColor="#2196f3"
+            error={!!errors.name}
+            placeholderTextColor="#999"
+          />
+          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        </View>
 
-            <TextInput
-              label="Description"
-              value={formData.description}
-              onChangeText={(value) => setFormData({ ...formData, description: value })}
-              mode="outlined"
-              multiline
-              numberOfLines={4}
-              style={styles.input}
-            />
+        {/* Description */}
+        <View style={styles.inputSection}>
+          <TextInput
+            placeholder="Add notes..."
+            value={formData.description}
+            onChangeText={(value) => setFormData({ ...formData, description: value })}
+            style={styles.descriptionInput}
+            mode="flat"
+            underlineColor="transparent"
+            activeUnderlineColor="#2196f3"
+            multiline
+            numberOfLines={3}
+            placeholderTextColor="#999"
+          />
+        </View>
 
-            <Text style={styles.label}>Due Date</Text>
-            {Platform.OS === 'web' ? (
-              <View style={styles.webDatePickerContainer}>
-                <input
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    fontSize: '16px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    outline: 'none',
-                    backgroundColor: '#fff',
-                    fontFamily: 'inherit'
-                  }}
-                />
-                {formData.dueDate && (
-                  <Button
-                    mode="text"
-                    onPress={() => setFormData({ ...formData, dueDate: '' })}
-                    style={styles.clearButton}
-                  >
-                    Clear Date
-                  </Button>
-                )}
-              </View>
-            ) : (
-              <>
-                <Button
-                  mode="outlined"
-                  onPress={() => setShowDatePicker(true)}
-                  style={styles.dateButton}
-                  icon="calendar"
-                >
-                  {formData.dueDate ? format(new Date(formData.dueDate), 'MMMM dd, yyyy') : 'Select Due Date'}
-                </Button>
-                {formData.dueDate && (
-                  <Button
-                    mode="text"
-                    onPress={() => setFormData({ ...formData, dueDate: '' })}
-                    style={styles.clearButton}
-                  >
-                    Clear Date
-                  </Button>
-                )}
-                {showDatePicker && (
-                  <View>
-                    <DateTimePicker
-                      value={selectedDate}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={handleDateChange}
-                    />
-                    {Platform.OS === 'ios' && (
-                      <Button
-                        mode="contained"
-                        onPress={closeDatePicker}
-                        style={styles.datePickerButton}
-                      >
-                        Done
-                      </Button>
-                    )}
-                  </View>
-                )}
-              </>
+        {/* Quick Options Row */}
+        <View style={styles.optionsRow}>
+          {/* Due Date */}
+          <TouchableOpacity
+            style={[styles.optionChip, formData.dueDate && styles.optionChipActive]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <MaterialCommunityIcons
+              name="calendar"
+              size={18}
+              color={formData.dueDate ? '#2196f3' : '#666'}
+            />
+            <Text style={[styles.optionText, formData.dueDate && styles.optionTextActive]}>
+              {formData.dueDate ? format(new Date(formData.dueDate), 'MMM d') : 'Due date'}
+            </Text>
+            {formData.dueDate && (
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setFormData({ ...formData, dueDate: '' });
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialCommunityIcons name="close-circle" size={16} color="#999" />
+              </TouchableOpacity>
             )}
+          </TouchableOpacity>
 
-            <Text style={styles.label}>Reminder Type</Text>
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <Button
-                  mode="outlined"
-                  onPress={() => setMenuVisible(true)}
-                  style={styles.menuButton}
-                  contentStyle={styles.menuButtonContent}
-                >
-                  {reminderTypes.find(r => r.value === formData.reminderType)?.label || 'Select Reminder'}
-                </Button>
-              }
-            >
-              {reminderTypes.map((type) => (
-                <Menu.Item
-                  key={type.value}
-                  onPress={() => {
-                    setFormData({ ...formData, reminderType: type.value });
-                    setMenuVisible(false);
-                  }}
-                  title={type.label}
+          {/* Reminder */}
+          <TouchableOpacity
+            style={[styles.optionChip, formData.reminderType && styles.optionChipActive]}
+            onPress={() => setShowReminderOptions(!showReminderOptions)}
+          >
+            <MaterialCommunityIcons
+              name={selectedReminder.icon}
+              size={18}
+              color={formData.reminderType ? '#2196f3' : '#666'}
+            />
+            <Text style={[styles.optionText, formData.reminderType && styles.optionTextActive]}>
+              {formData.reminderType ? selectedReminder.label : 'Remind'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Reminder Options Dropdown */}
+        {showReminderOptions && (
+          <View style={styles.reminderDropdown}>
+            {REMINDER_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.reminderOption,
+                  formData.reminderType === option.value && styles.reminderOptionActive
+                ]}
+                onPress={() => {
+                  setFormData({ ...formData, reminderType: option.value });
+                  setShowReminderOptions(false);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={option.icon}
+                  size={20}
+                  color={formData.reminderType === option.value ? '#2196f3' : '#666'}
                 />
-              ))}
-            </Menu>
+                <Text style={[
+                  styles.reminderOptionText,
+                  formData.reminderType === option.value && styles.reminderOptionTextActive
+                ]}>
+                  {option.label}
+                </Text>
+                {formData.reminderType === option.value && (
+                  <MaterialCommunityIcons name="check" size={20} color="#2196f3" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-            <Text style={styles.label}>Attachments</Text>
-            <View style={styles.attachmentButtonsContainer}>
-              <Button
-                mode="outlined"
-                onPress={takePhoto}
-                style={styles.attachmentButton}
-                icon="camera"
+        {/* Date Picker */}
+        {showDatePicker && Platform.OS !== 'web' && (
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+            />
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={styles.datePickerDone}
+                onPress={() => setShowDatePicker(false)}
               >
-                Camera
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={pickImageFromGallery}
-                style={styles.attachmentButton}
-                icon="image"
-              >
-                Photo
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={pickDocument}
-                style={styles.attachmentButton}
-                icon="file-document"
-              >
-                File
-              </Button>
+                <Text style={styles.datePickerDoneText}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {Platform.OS === 'web' && showDatePicker && (
+          <View style={styles.webDatePickerContainer}>
+            <input
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => {
+                setFormData({ ...formData, dueDate: e.target.value });
+                setShowDatePicker(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '16px',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                outline: 'none',
+                backgroundColor: '#fff',
+              }}
+            />
+          </View>
+        )}
+
+        {/* Attachments Section */}
+        <View style={styles.attachmentsSection}>
+          <Text style={styles.sectionTitle}>Attachments</Text>
+          <View style={styles.attachmentButtons}>
+            <TouchableOpacity style={styles.attachButton} onPress={takePhoto}>
+              <MaterialCommunityIcons name="camera" size={22} color="#666" />
+              <Text style={styles.attachButtonText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachButton} onPress={pickImageFromGallery}>
+              <MaterialCommunityIcons name="image" size={22} color="#666" />
+              <Text style={styles.attachButtonText}>Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachButton} onPress={pickDocument}>
+              <MaterialCommunityIcons name="file-document" size={22} color="#666" />
+              <Text style={styles.attachButtonText}>File</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Image Preview */}
+          {selectedImage && (
+            <View style={styles.imagePreview}>
+              <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+              <TouchableOpacity style={styles.removeAttachment} onPress={removeImage}>
+                <MaterialCommunityIcons name="close-circle" size={24} color="#fff" />
+              </TouchableOpacity>
             </View>
+          )}
 
-            {selectedImage && (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-                <IconButton
-                  icon="close-circle"
-                  size={30}
-                  style={styles.removeImageButton}
-                  onPress={removeImage}
-                />
+          {/* Document Preview */}
+          {selectedDocument && (
+            <View style={styles.documentPreview}>
+              <MaterialCommunityIcons
+                name={getFileIcon(selectedDocument.mimeType)}
+                size={32}
+                color="#2196f3"
+              />
+              <View style={styles.documentInfo}>
+                <Text style={styles.documentName} numberOfLines={1}>
+                  {selectedDocument.name}
+                </Text>
+                <Text style={styles.documentSize}>
+                  {formatFileSize(selectedDocument.size)}
+                </Text>
               </View>
-            )}
-
-            {selectedDocument && (
-              <View style={styles.documentPreviewContainer}>
-                <View style={styles.documentInfo}>
-                  <MaterialCommunityIcons
-                    name={getFileIcon(selectedDocument.mimeType)}
-                    size={40}
-                    color="#1976d2"
-                  />
-                  <View style={styles.documentDetails}>
-                    <Text style={styles.documentName} numberOfLines={1}>
-                      {selectedDocument.name}
-                    </Text>
-                    <Text style={styles.documentSize}>
-                      {formatFileSize(selectedDocument.size)}
-                    </Text>
-                  </View>
-                  <IconButton
-                    icon="close-circle"
-                    size={24}
-                    onPress={removeDocument}
-                  />
-                </View>
-              </View>
-            )}
-
-            <Button
-              mode="contained"
-              onPress={handleSubmit}
-              loading={loading}
-              disabled={loading}
-              style={styles.submitButton}
-            >
-              {loading ? 'Saving...' : isEdit ? 'Update Task' : 'Create Task'}
-            </Button>
-          </Card.Content>
-        </Card>
+              <TouchableOpacity onPress={removeDocument}>
+                <MaterialCommunityIcons name="close-circle" size={22} color="#999" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
-    </View>
+
+      {/* Save Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="check" size={22} color="#fff" />
+              <Text style={styles.saveButtonText}>
+                {isEdit ? 'Update Task' : 'Create Task'}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2
+    borderBottomColor: '#f0f0f0',
+  },
+  headerButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 40
   },
-  headerSpacer: {
-    width: 40
+  headerRight: {
+    width: 48,
+    alignItems: 'flex-end',
   },
   content: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    paddingHorizontal: 16,
   },
-  card: {
-    margin: 16
+  inputSection: {
+    marginTop: 16,
   },
-  input: {
-    marginBottom: 8
-  },
-  label: {
-    fontSize: 14,
+  titleInput: {
+    backgroundColor: '#f8f9fa',
+    fontSize: 18,
     fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-    marginTop: 8
+    borderRadius: 12,
+    paddingHorizontal: 4,
   },
-  webDatePickerContainer: {
-    marginBottom: 8
+  descriptionInput: {
+    backgroundColor: '#f8f9fa',
+    fontSize: 15,
+    borderRadius: 12,
+    minHeight: 80,
+    paddingHorizontal: 4,
   },
-  menuButton: {
-    marginBottom: 16
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
-  menuButtonContent: {
-    justifyContent: 'flex-start'
-  },
-  dateButton: {
-    marginBottom: 8
-  },
-  clearButton: {
-    marginBottom: 16
-  },
-  datePickerButton: {
-    marginTop: 8,
-    marginBottom: 16
-  },
-  attachmentButtonsContainer: {
+  optionsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16
+    gap: 10,
+    marginTop: 20,
+    flexWrap: 'wrap',
   },
-  attachmentButton: {
-    flex: 1
-  },
-  imagePreviewContainer: {
-    position: 'relative',
-    marginBottom: 16
-  },
-  imagePreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0'
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: 'white',
-    borderRadius: 15
-  },
-  documentPreviewContainer: {
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#f9f9f9'
-  },
-  documentInfo: {
+  optionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
   },
-  documentDetails: {
-    flex: 1
+  optionChipActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+  },
+  optionText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  optionTextActive: {
+    color: '#2196f3',
+  },
+  reminderDropdown: {
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+    overflow: 'hidden',
+  },
+  reminderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  reminderOptionActive: {
+    backgroundColor: '#f0f7ff',
+  },
+  reminderOptionText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  reminderOptionTextActive: {
+    color: '#2196f3',
+    fontWeight: '500',
+  },
+  datePickerContainer: {
+    marginTop: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 8,
+  },
+  datePickerDone: {
+    alignSelf: 'flex-end',
+    padding: 8,
+  },
+  datePickerDoneText: {
+    color: '#2196f3',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  webDatePickerContainer: {
+    marginTop: 12,
+  },
+  attachmentsSection: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  attachmentButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  attachButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+    borderStyle: 'dashed',
+  },
+  attachButtonText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  imagePreview: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  previewImage: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#f0f0f0',
+  },
+  removeAttachment: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+  },
+  documentPreview: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+  },
+  documentInfo: {
+    flex: 1,
   },
   documentName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#333',
-    marginBottom: 4
+    marginBottom: 2,
   },
   documentSize: {
     fontSize: 12,
-    color: '#666'
+    color: '#999',
   },
-  submitButton: {
-    marginTop: 24
-  }
+  footer: {
+    padding: 16,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#4caf50',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#a5d6a7',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

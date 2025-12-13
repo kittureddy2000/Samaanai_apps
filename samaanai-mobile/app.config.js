@@ -6,7 +6,7 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    newArchEnabled: false,
+    newArchEnabled: true,
     scheme: "samaanai",
     splash: {
       image: "./assets/splash-icon.png",
@@ -58,6 +58,7 @@ module.exports = {
       }
     },
     plugins: [
+      "./plugins/excludeAndroidSupport",
       [
         "expo-image-picker",
         {
@@ -70,16 +71,21 @@ module.exports = {
         "expo-build-properties",
         {
           android: {
-            enableProguardInReleaseBuilds: true,
-            enableShrinkResourcesInReleaseBuilds: true,
+            newArchEnabled: true,
+            enableProguardInReleaseBuilds: false,
+            enableShrinkResourcesInReleaseBuilds: false,
             usesCleartextTraffic: false,
-            enableAndroidX: true,
-            useAndroidX: true
+            compileSdkVersion: 35,
+            targetSdkVersion: 35,
+            minSdkVersion: 24
+          },
+          ios: {
+            newArchEnabled: true,
+            deploymentTarget: "15.1"
           }
         }
       ],
-      // Custom plugin to exclude old Android Support libraries that conflict with AndroidX
-      "./plugins/excludeAndroidSupport.js"
+      "expo-secure-store"
     ]
   }
 };

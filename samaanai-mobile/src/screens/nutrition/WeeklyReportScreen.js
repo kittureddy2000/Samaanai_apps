@@ -1,9 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import { Text, Card, Title, Button, ActivityIndicator } from 'react-native-paper';
-import { BarChart } from 'react-native-chart-kit';
+import { View, StyleSheet, ScrollView, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { Text, Button, ActivityIndicator, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  VictoryBar,
+  VictoryChart,
+  VictoryAxis,
+  VictoryGroup,
+  isVictoryAvailable,
+} from '../../components/charts';
 import { api } from '../../services/api';
 import { format, subDays, addDays, getDay } from 'date-fns';
+import { colors, spacing } from '../../theme';
+import { StatCard, StatCardRow, ChartCard, ChartLegend } from '../../components/common';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Web fallback chart component
+const WebBarChart = ({ data }) => {
+  const maxValue = Math.max(...data.flatMap((d) => [d.food || 0, d.exercise || 0]), 1);
+  const chartHeight = 180;
+
+  return (
+    <View style={webChartStyles.container}>
+      <View style={webChartStyles.chart}>
+        {data.map((item, index) => (
+          <View key={index} style={webChartStyles.barGroup}>
+            <View style={webChartStyles.barsContainer}>
+              <View
+                style={[
+                  webChartStyles.bar,
+                  {
+                    height: Math.max(((item.food || 0) / maxValue) * chartHeight, 4),
+                    backgroundColor: colors.caloriesConsumed,
+                  },
+                ]}
+              />
+              <View
+                style={[
+                  webChartStyles.bar,
+                  {
+                    height: Math.max(((item.exercise || 0) / maxValue) * chartHeight, 4),
+                    backgroundColor: colors.caloriesBurned,
+                  },
+                ]}
+              />
+            </View>
+            <Text style={webChartStyles.label}>{item.day}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const webChartStyles = StyleSheet.create({
+  container: { padding: spacing.sm },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 200, paddingBottom: 25 },
+  barGroup: { alignItems: 'center' },
+  barsContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  bar: { width: 14, borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 4 },
+  label: { marginTop: 8, fontSize: 11, color: colors.textSecondary, fontWeight: '500' },
+});
 
 const getStartOfCurrentWeek = (startOfWeek = 2) => {
   const today = new Date();
@@ -29,7 +87,6 @@ export default function WeeklyReportScreen({ navigation }) {
       setLoading(true);
       setError(null);
 
-      // Calculate start and end of week
       const endDate = new Date(selectedDate);
       endDate.setDate(endDate.getDate() + 6);
 
@@ -51,56 +108,56 @@ export default function WeeklyReportScreen({ navigation }) {
   }, [selectedDate]);
 
   const handlePreviousWeek = () => {
-    setSelectedDate(prevDate => subDays(prevDate, 7));
+    setSelectedDate((prevDate) => subDays(prevDate, 7));
   };
 
   const handleNextWeek = () => {
-    setSelectedDate(prevDate => addDays(prevDate, 7));
+    setSelectedDate((prevDate) => addDays(prevDate, 7));
   };
 
   const prepareChartData = () => {
-    if (!weeklyData || !weeklyData.daily_summaries || weeklyData.daily_summaries.length === 0) {
-      return null;
-    }
+    if (!weeklyData?.daily_summaries?.length) return null;
 
-    const sortedEntries = [...weeklyData.daily_summaries].sort((a, b) =>
-      parseLocalDate(a.date) - parseLocalDate(b.date)
+    const sortedEntries = [...weeklyData.daily_summaries].sort(
+      (a, b) => parseLocalDate(a.date) - parseLocalDate(b.date)
     );
 
-    const labels = sortedEntries.map(entry => format(parseLocalDate(entry.date), 'EEE'));
-    const foodData = sortedEntries.map(entry => entry.total_food_calories || 0);
-    const exerciseData = sortedEntries.map(entry => entry.total_exercise_calories || 0);
-    const netData = sortedEntries.map(entry => {
-      const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      return hasData ? (entry.net_calories || 0) : 0;
-    });
-
-    return { labels, foodData, exerciseData, netData };
+    return sortedEntries.map((entry) => ({
+      day: format(parseLocalDate(entry.date), 'EEE'),
+      food: entry.total_food_calories || 0,
+      exercise: entry.total_exercise_calories || 0,
+    }));
   };
 
   const calculateTotals = () => {
-    if (!weeklyData || !weeklyData.daily_summaries) {
-      return { totalFood: 0, totalExercise: 0, netBalance: 0 };
+    if (!weeklyData?.daily_summaries) {
+      return { totalFood: 0, totalExercise: 0, netBalance: 0, daysLogged: 0 };
     }
 
     let totalFood = 0;
     let totalExercise = 0;
-    let netBalance = 0;
+    let daysLogged = 0;
 
-    weeklyData.daily_summaries.forEach(entry => {
+    weeklyData.daily_summaries.forEach((entry) => {
       totalFood += entry.total_food_calories || 0;
       totalExercise += entry.total_exercise_calories || 0;
-      const hasData = (entry.total_food_calories > 0 || entry.total_exercise_calories > 0);
-      netBalance += hasData ? (entry.net_calories || 0) : 0;
+      if (entry.total_food_calories > 0 || entry.total_exercise_calories > 0) {
+        daysLogged++;
+      }
     });
 
-    return { totalFood, totalExercise, netBalance };
+    return {
+      totalFood,
+      totalExercise,
+      netBalance: totalFood - totalExercise,
+      daysLogged,
+    };
   };
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading weekly data...</Text>
       </View>
     );
@@ -119,108 +176,147 @@ export default function WeeklyReportScreen({ navigation }) {
 
   const chartData = prepareChartData();
   const totals = calculateTotals();
+  const avgDaily = totals.daysLogged > 0 ? Math.round(totals.netBalance / totals.daysLogged) : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Week Navigation */}
-      <View style={styles.weekSelector}>
-        <Button mode="outlined" onPress={handlePreviousWeek}>←</Button>
-        <View style={styles.weekDisplay}>
-          {weeklyData && weeklyData.start_date && weeklyData.end_date ? (
-            <Text style={styles.weekText}>
-              {format(new Date(weeklyData.start_date), 'MMM d')} -{' '}
-              {format(new Date(weeklyData.end_date), 'MMM d, yyyy')}
-            </Text>
-          ) : (
-            <Text style={styles.weekText}>Loading...</Text>
-          )}
+      <Surface style={styles.weekSelector} elevation={1}>
+        <View style={styles.navRow}>
+          <TouchableOpacity onPress={handlePreviousWeek} style={styles.navButton}>
+            <MaterialCommunityIcons name="chevron-left" size={28} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSelectedDate(getStartOfCurrentWeek())} style={styles.weekDisplayTouchable}>
+            {weeklyData?.start_date && weeklyData?.end_date ? (
+              <Text style={styles.weekText}>
+                {format(new Date(weeklyData.start_date), 'MMM d')} - {format(new Date(weeklyData.end_date), 'MMM d, yyyy')}
+              </Text>
+            ) : (
+              <Text style={styles.weekText}>Select Week</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNextWeek} style={styles.navButton}>
+            <MaterialCommunityIcons name="chevron-right" size={28} color={colors.primary} />
+          </TouchableOpacity>
         </View>
-        <Button mode="outlined" onPress={handleNextWeek}>→</Button>
+        <TouchableOpacity onPress={() => setSelectedDate(getStartOfCurrentWeek())} style={styles.todayButton}>
+          <Text style={styles.todayText}>This Week</Text>
+        </TouchableOpacity>
+      </Surface>
+
+      {/* Summary Stats */}
+      <View style={styles.section}>
+        <StatCardRow>
+          <StatCard
+            label="Food"
+            value={totals.totalFood}
+            unit="cal"
+            icon="food"
+            iconColor={colors.caloriesConsumed}
+            valueColor={colors.caloriesConsumed}
+            variant="compact"
+          />
+          <StatCard
+            label="Exercise"
+            value={totals.totalExercise}
+            unit="cal"
+            icon="run"
+            iconColor={colors.caloriesBurned}
+            valueColor={colors.caloriesBurned}
+            variant="compact"
+          />
+          <StatCard
+            label="Net"
+            value={totals.netBalance}
+            unit="cal"
+            icon="calculator"
+            iconColor={colors.netCalories}
+            valueColor={totals.netBalance > 14000 ? colors.surplus : colors.deficit}
+            variant="compact"
+          />
+        </StatCardRow>
       </View>
 
-      {/* Summary Card */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title>Weekly Calorie Balance</Title>
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryValue}>{totals.totalFood} cal</Text>
-              <Text style={styles.summaryLabel}>Total Food</Text>
-            </View>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryValue}>{totals.totalExercise} cal</Text>
-              <Text style={styles.summaryLabel}>Total Exercise</Text>
-            </View>
-            <View style={styles.summaryBox}>
-              <Text style={[styles.summaryValue, totals.netBalance >= 0 ? styles.positive : styles.negative]}>
-                {totals.netBalance} cal
-              </Text>
-              <Text style={styles.summaryLabel}>Net Balance</Text>
-            </View>
+      {/* Insights */}
+      <Surface style={styles.insightCard} elevation={1}>
+        <View style={styles.insightRow}>
+          <View style={styles.insightItem}>
+            <Text style={styles.insightValue}>{totals.daysLogged}/7</Text>
+            <Text style={styles.insightLabel}>Days Logged</Text>
           </View>
-        </Card.Content>
-      </Card>
+          <View style={styles.insightDivider} />
+          <View style={styles.insightItem}>
+            <Text style={[styles.insightValue, { color: avgDaily > 2000 ? colors.surplus : colors.deficit }]}>
+              {avgDaily}
+            </Text>
+            <Text style={styles.insightLabel}>Avg/Day</Text>
+          </View>
+        </View>
+      </Surface>
 
-      {/* Chart Card */}
+      {/* Chart */}
       {chartData ? (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title>Daily Breakdown</Title>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <BarChart
-                data={{
-                  labels: chartData.labels,
-                  datasets: [
-                    {
-                      data: chartData.foodData,
-                      color: () => 'rgba(255, 99, 132, 1)',
-                    },
-                    {
-                      data: chartData.exerciseData,
-                      color: () => 'rgba(75, 192, 192, 1)',
-                    },
-                  ],
-                  legend: ['Food', 'Exercise']
-                }}
-                width={Math.max(Dimensions.get('window').width - 60, chartData.labels.length * 80)}
-                height={220}
-                yAxisLabel=""
-                yAxisSuffix=" cal"
-                chartConfig={{
-                  backgroundColor: '#ffffff',
-                  backgroundGradientFrom: '#ffffff',
-                  backgroundGradientTo: '#ffffff',
-                  decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                  style: {
-                    borderRadius: 16
-                  },
-                  propsForLabels: {
-                    fontSize: 12
-                  }
-                }}
-                style={styles.chart}
+        <View style={styles.section}>
+          <ChartCard
+            title="Daily Breakdown"
+            legend={
+              <ChartLegend
+                items={[
+                  { label: 'Food', color: colors.caloriesConsumed },
+                  { label: 'Exercise', color: colors.caloriesBurned },
+                ]}
               />
-            </ScrollView>
-            <View style={styles.legend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: 'rgba(255, 99, 132, 1)' }]} />
-                <Text style={styles.legendText}>Food</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: 'rgba(75, 192, 192, 1)' }]} />
-                <Text style={styles.legendText}>Exercise</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+            }
+          >
+            {isVictoryAvailable ? (
+              <VictoryChart
+                width={SCREEN_WIDTH - spacing.lg * 2}
+                height={220}
+                domainPadding={{ x: 25 }}
+                padding={{ top: 20, bottom: 40, left: 50, right: 20 }}
+              >
+                <VictoryAxis
+                  dependentAxis
+                  tickFormat={(t) => (t >= 1000 ? `${t / 1000}k` : t)}
+                  style={{
+                    axis: { stroke: colors.border },
+                    tickLabels: { fill: colors.textSecondary, fontSize: 10 },
+                    grid: { stroke: colors.divider, strokeDasharray: '4,4' },
+                  }}
+                />
+                <VictoryAxis
+                  style={{
+                    axis: { stroke: colors.border },
+                    tickLabels: { fill: colors.textSecondary, fontSize: 11, fontWeight: '500' },
+                  }}
+                />
+                <VictoryGroup offset={14} colorScale={[colors.caloriesConsumed, colors.caloriesBurned]}>
+                  <VictoryBar
+                    data={chartData}
+                    x="day"
+                    y="food"
+                    barWidth={12}
+                    cornerRadius={{ top: 4 }}
+                  />
+                  <VictoryBar
+                    data={chartData}
+                    x="day"
+                    y="exercise"
+                    barWidth={12}
+                    cornerRadius={{ top: 4 }}
+                  />
+                </VictoryGroup>
+              </VictoryChart>
+            ) : (
+              <WebBarChart data={chartData} />
+            )}
+          </ChartCard>
+        </View>
       ) : (
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text style={styles.emptyText}>No data available for this week.</Text>
-          </Card.Content>
-        </Card>
+        <Surface style={styles.emptyCard} elevation={1}>
+          <Text style={styles.emptyText}>No data available for this week.</Text>
+          <Text style={styles.emptyHint}>Start logging your meals to see your progress!</Text>
+        </Surface>
       )}
     </ScrollView>
   );
@@ -229,105 +325,115 @@ export default function WeeklyReportScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: spacing.lg,
+    backgroundColor: colors.background,
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: spacing.md,
     fontSize: 16,
-    color: '#666'
+    color: colors.textSecondary,
   },
   errorText: {
     fontSize: 16,
-    color: '#d32f2f',
+    color: colors.error,
     textAlign: 'center',
-    marginBottom: 16
+    marginBottom: spacing.md,
   },
   retryButton: {
-    marginTop: 8
+    marginTop: spacing.sm,
   },
   weekSelector: {
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  navRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0'
   },
-  weekDisplay: {
+  navButton: {
+    padding: spacing.sm,
+  },
+  weekDisplayTouchable: {
     flex: 1,
     alignItems: 'center',
-    marginHorizontal: 8
   },
   weekText: {
     fontSize: 16,
-    fontWeight: '600'
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
-  card: {
-    margin: 16,
-    marginBottom: 8
+  todayButton: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primaryLight || '#e3f2fd',
+    borderRadius: 16,
   },
-  summaryGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16
+  todayText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
-  summaryBox: {
-    alignItems: 'center',
-    flex: 1
+  section: {
+    padding: spacing.md,
   },
-  summaryValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1976d2'
+  insightCard: {
+    marginHorizontal: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
   },
-  summaryLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    textAlign: 'center'
-  },
-  positive: {
-    color: '#d32f2f'
-  },
-  negative: {
-    color: '#4caf50'
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16
-  },
-  legend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-    gap: 16
-  },
-  legendItem: {
+  insightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 8
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 6
+  insightItem: {
+    flex: 1,
+    alignItems: 'center',
   },
-  legendText: {
+  insightDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: colors.divider,
+  },
+  insightValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  insightLabel: {
     fontSize: 12,
-    color: '#666'
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  emptyCard: {
+    margin: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    alignItems: 'center',
   },
   emptyText: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 16,
+    color: colors.textSecondary,
     textAlign: 'center',
-    paddingVertical: 24
-  }
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: colors.textHint,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
 });

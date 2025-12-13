@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const { prisma } = require('../config/database');
 const { sendEmail } = require('../services/emailService');
 
@@ -56,6 +57,49 @@ exports.updateProfile = async (req, res, next) => {
     });
 
     res.json({ user: { ...user, profile } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+
+    // Get user with password
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, password: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     next(error);
   }
@@ -182,6 +226,62 @@ exports.registerPushToken = async (req, res, next) => {
     res.json({ success: true, message: 'Push token registered successfully' });
   } catch (error) {
     console.error('❌ Error registering push token:', error);
+    next(error);
+  }
+};
+
+exports.sendTestNotification = async (req, res, next) => {
+  try {
+    const { sendPushNotification } = require('../services/pushNotificationService');
+
+    console.log('=== Test Notification Request ===');
+    console.log('User ID:', req.user.id);
+    console.log('Username:', req.user.username);
+
+    // Get user's push token from profile
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: req.user.id }
+    });
+
+    console.log('User profile found:', !!profile);
+    console.log('Has push token:', !!profile?.pushToken);
+    console.log('Push token:', profile?.pushToken);
+    console.log('Notifications enabled:', profile?.notifications);
+    console.log('EXPO_ACCESS_TOKEN set:', !!process.env.EXPO_ACCESS_TOKEN);
+
+    if (!profile?.pushToken) {
+      return res.status(400).json({
+        success: false,
+        error: 'No push token registered for this user',
+        debug: {
+          hasProfile: !!profile,
+          notificationsEnabled: profile?.notifications,
+          expoTokenConfigured: !!process.env.EXPO_ACCESS_TOKEN
+        }
+      });
+    }
+
+    // Send test notification
+    const result = await sendPushNotification({
+      pushToken: profile.pushToken,
+      title: 'Test Notification',
+      body: 'This is a test notification from Samaanai!',
+      data: { type: 'test', timestamp: new Date().toISOString() }
+    });
+
+    console.log('Push notification result:', result);
+
+    res.json({
+      success: result.success,
+      message: result.success ? 'Test notification sent successfully' : 'Failed to send notification',
+      debug: {
+        pushToken: profile.pushToken,
+        expoTokenConfigured: !!process.env.EXPO_ACCESS_TOKEN,
+        result
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error sending test notification:', error);
     next(error);
   }
 };

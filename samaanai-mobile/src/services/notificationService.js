@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 // Configure how notifications should be handled when the app is in foreground
 Notifications.setNotificationHandler({
@@ -42,8 +43,16 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    // Get the Expo push token
-    token = (await Notifications.getExpoPushTokenAsync()).data;
+    // Get the Expo push token - projectId is required for Expo SDK 50+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    console.log('Using projectId for push token:', projectId);
+
+    if (!projectId) {
+      console.error('Missing projectId in app.config.js - push tokens will not work');
+      return null;
+    }
+
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     console.log('Expo push token obtained:', token);
 
     // Store token locally

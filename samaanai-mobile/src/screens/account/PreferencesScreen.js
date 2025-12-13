@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, TouchableOpacity } from 'react-native';
-import { Text, Card, Button, ActivityIndicator, List, Switch, Divider } from 'react-native-paper';
+import { Text, ActivityIndicator, Switch, Surface } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { api } from '../../services/api';
@@ -15,7 +16,7 @@ export default function PreferencesScreen({ navigation }) {
     darkMode: false,
     emailNotifications: true,
     weeklyReports: true,
-    notificationTime: '14:30' // Default to 2:30 PM UTC
+    notificationTime: '14:30'
   });
 
   useEffect(() => {
@@ -31,7 +32,6 @@ export default function PreferencesScreen({ navigation }) {
       }
     } catch (err) {
       console.error('Fetch preferences error:', err);
-      // Use default preferences if fetch fails
     } finally {
       setLoading(false);
     }
@@ -57,8 +57,6 @@ export default function PreferencesScreen({ navigation }) {
   const handleTestNotification = async () => {
     try {
       setTestingNotification(true);
-
-      // Test push notification
       const { status } = await Notifications.getPermissionsAsync();
 
       if (status !== 'granted') {
@@ -70,35 +68,30 @@ export default function PreferencesScreen({ navigation }) {
         return;
       }
 
-      // Schedule a test notification
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Test Notification 📬',
+          title: 'Test Notification',
           body: 'This is a test notification from Samaanai. Your notifications are working!',
           data: { test: true },
         },
         trigger: { seconds: 2 },
       });
 
-      // Test email notification via backend
       try {
         await api.updatePreferences({ ...preferences, testEmail: true });
         Alert.alert(
           'Test Notification Sent',
-          'Push notification will appear in 2 seconds.\n\nAn email has also been sent to your registered email address.',
-          [{ text: 'OK' }]
+          'Push notification will appear in 2 seconds.\n\nAn email has also been sent to your registered email address.'
         );
       } catch (emailErr) {
-        console.error('Email test error:', emailErr);
         Alert.alert(
           'Push Notification Scheduled',
-          'Push notification will appear in 2 seconds.\n\nNote: Email test failed. Please check your email settings.',
-          [{ text: 'OK' }]
+          'Push notification will appear in 2 seconds.\n\nNote: Email test failed.'
         );
       }
     } catch (err) {
       console.error('Test notification error:', err);
-      Alert.alert('Error', 'Failed to send test notification. Please try again.');
+      Alert.alert('Error', 'Failed to send test notification.');
     } finally {
       setTestingNotification(false);
     }
@@ -108,12 +101,10 @@ export default function PreferencesScreen({ navigation }) {
     if (Platform.OS === 'android') {
       setShowTimePicker(false);
     }
-
     if (selectedTime) {
       const hours = selectedTime.getHours().toString().padStart(2, '0');
       const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
-      const timeString = `${hours}:${minutes}`;
-      setPreferences({ ...preferences, notificationTime: timeString });
+      setPreferences({ ...preferences, notificationTime: `${hours}:${minutes}` });
     }
   };
 
@@ -141,131 +132,171 @@ export default function PreferencesScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#1976d2" />
         <Text style={styles.loadingText}>Loading preferences...</Text>
       </View>
     );
   }
 
-  return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.title}>Preferences</Text>
-        </Card.Content>
+  const SettingItem = ({ icon, iconColor, title, subtitle, rightElement, onPress, showBorder = true }) => (
+    <TouchableOpacity
+      style={[styles.settingItem, !showBorder && styles.settingItemNoBorder]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.settingIconCircle, { backgroundColor: iconColor + '15' }]}>
+        <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
+      </View>
+      <View style={styles.settingContent}>
+        <Text style={styles.settingTitle}>{title}</Text>
+        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
+      </View>
+      {rightElement}
+    </TouchableOpacity>
+  );
 
-        <List.Section>
-          <List.Subheader>Notifications</List.Subheader>
-          <Divider />
-          <List.Item
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <View style={styles.iconContainer}>
+          <MaterialCommunityIcons name="cog" size={40} color="#616161" />
+        </View>
+        <Text style={styles.headerTitle}>Preferences</Text>
+        <Text style={styles.headerSubtitle}>Customize your app experience</Text>
+      </View>
+
+      {/* Notifications Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Surface style={styles.settingsCard} elevation={1}>
+          <SettingItem
+            icon="bell"
+            iconColor="#1976d2"
             title="Push Notifications"
-            description="Receive push notifications"
-            left={props => <List.Icon {...props} icon="bell" />}
-            right={() => (
+            subtitle="Receive push notifications"
+            rightElement={
               <Switch
                 value={preferences.notifications}
                 onValueChange={() => handleToggle('notifications')}
+                color="#1976d2"
               />
-            )}
+            }
           />
-          <Divider />
-          <List.Item
+          <SettingItem
+            icon="email"
+            iconColor="#43a047"
             title="Email Notifications"
-            description="Receive email updates"
-            left={props => <List.Icon {...props} icon="email" />}
-            right={() => (
+            subtitle="Receive email updates"
+            rightElement={
               <Switch
                 value={preferences.emailNotifications}
                 onValueChange={() => handleToggle('emailNotifications')}
+                color="#43a047"
               />
-            )}
+            }
           />
-          <Divider />
-          <List.Item
+          <SettingItem
+            icon="chart-line"
+            iconColor="#ff9800"
             title="Weekly Reports"
-            description="Receive weekly summary emails"
-            left={props => <List.Icon {...props} icon="chart-line" />}
-            right={() => (
+            subtitle="Receive weekly summary emails"
+            rightElement={
               <Switch
                 value={preferences.weeklyReports}
                 onValueChange={() => handleToggle('weeklyReports')}
+                color="#ff9800"
               />
-            )}
+            }
           />
-          <Divider />
-          <TouchableOpacity onPress={() => setShowTimePicker(true)}>
-            <List.Item
-              title="Daily Notification Time"
-              description={`Receive daily reminders at ${formatTime(preferences.notificationTime)}`}
-              left={props => <List.Icon {...props} icon="clock-outline" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-            />
-          </TouchableOpacity>
-          {showTimePicker && (
-            <DateTimePicker
-              value={getTimeDate()}
-              mode="time"
-              is24Hour={false}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleTimeChange}
-            />
-          )}
-          <Divider />
-          <List.Item
+          <SettingItem
+            icon="clock-outline"
+            iconColor="#7b1fa2"
+            title="Daily Notification Time"
+            subtitle={`Reminders at ${formatTime(preferences.notificationTime)}`}
+            onPress={() => setShowTimePicker(true)}
+            rightElement={
+              <MaterialCommunityIcons name="chevron-right" size={24} color="#bdbdbd" />
+            }
+          />
+          <SettingItem
+            icon="bell-check"
+            iconColor="#00897b"
             title="Test Notifications"
-            description="Send test push and email notification"
-            left={props => <List.Icon {...props} icon="bell-check" />}
-            right={() => (
-              <Button
-                mode="outlined"
+            subtitle="Send test push and email"
+            showBorder={false}
+            rightElement={
+              <TouchableOpacity
+                style={[styles.testButton, testingNotification && styles.testButtonDisabled]}
                 onPress={handleTestNotification}
-                loading={testingNotification}
                 disabled={testingNotification}
-                compact
               >
-                Test
-              </Button>
-            )}
+                <Text style={styles.testButtonText}>
+                  {testingNotification ? 'Sending...' : 'Test'}
+                </Text>
+              </TouchableOpacity>
+            }
           />
-        </List.Section>
+        </Surface>
+      </View>
 
-        <List.Section>
-          <List.Subheader>Appearance</List.Subheader>
-          <Divider />
-          <List.Item
+      {showTimePicker && (
+        <DateTimePicker
+          value={getTimeDate()}
+          mode="time"
+          is24Hour={false}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+        />
+      )}
+
+      {/* Appearance Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Appearance</Text>
+        <Surface style={styles.settingsCard} elevation={1}>
+          <SettingItem
+            icon="theme-light-dark"
+            iconColor="#616161"
             title="Dark Mode"
-            description="Use dark theme"
-            left={props => <List.Icon {...props} icon="theme-light-dark" />}
-            right={() => (
+            subtitle="Use dark theme"
+            showBorder={false}
+            rightElement={
               <Switch
                 value={preferences.darkMode}
                 onValueChange={() => handleToggle('darkMode')}
+                color="#616161"
               />
-            )}
+            }
           />
-        </List.Section>
+        </Surface>
+      </View>
 
-        <Card.Content>
-          <Button
-            mode="contained"
-            onPress={handleSave}
-            loading={saving}
-            disabled={saving}
-            style={styles.submitButton}
-          >
+      {/* Buttons */}
+      <View style={styles.buttonSection}>
+        <TouchableOpacity
+          style={[styles.primaryButton, saving && styles.buttonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="content-save" size={20} color="#fff" />
+          <Text style={styles.primaryButtonText}>
             {saving ? 'Saving...' : 'Save Preferences'}
-          </Button>
+          </Text>
+        </TouchableOpacity>
 
-          <Button
-            mode="outlined"
-            onPress={() => navigation.goBack()}
-            disabled={saving}
-            style={styles.cancelButton}
-          >
-            Cancel
-          </Button>
-        </Card.Content>
-      </Card>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.goBack()}
+          disabled={saving}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.secondaryButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.bottomSpacer} />
     </ScrollView>
   );
 }
@@ -273,33 +304,163 @@ export default function PreferencesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: '#f5f6f8'
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24
+    padding: 24,
+    backgroundColor: '#f5f6f8'
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: '#666'
   },
-  card: {
-    margin: 16
+  // Header
+  headerSection: {
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingTop: 32,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4
   },
-  title: {
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#333'
-  },
-  submitButton: {
-    marginTop: 24,
+    fontWeight: '700',
+    color: '#212121',
     marginBottom: 8
   },
-  cancelButton: {
-    marginTop: 8
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
+    paddingHorizontal: 32
+  },
+  // Sections
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 16
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9e9e9e',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    marginLeft: 4
+  },
+  settingsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden'
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0'
+  },
+  settingItemNoBorder: {
+    borderBottomWidth: 0
+  },
+  settingIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14
+  },
+  settingContent: {
+    flex: 1
+  },
+  settingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#212121',
+    marginBottom: 2
+  },
+  settingSubtitle: {
+    fontSize: 13,
+    color: '#9e9e9e'
+  },
+  testButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16
+  },
+  testButtonDisabled: {
+    opacity: 0.7
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  // Buttons
+  buttonSection: {
+    paddingHorizontal: 16,
+    marginTop: 32
+  },
+  primaryButton: {
+    backgroundColor: '#1976d2',
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1976d2',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  buttonDisabled: {
+    opacity: 0.7
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8
+  },
+  secondaryButton: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0'
+  },
+  secondaryButtonText: {
+    color: '#616161',
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  bottomSpacer: {
+    height: 40
   }
 });
