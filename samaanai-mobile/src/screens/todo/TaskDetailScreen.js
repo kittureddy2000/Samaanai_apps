@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, Image, Alert, Linking, TouchableOpacity, Platform } from 'react-native';
 import { Text, ActivityIndicator, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 
@@ -12,9 +13,12 @@ export default function TaskDetailScreen({ route, navigation }) {
   const [error, setError] = useState(null);
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    fetchTask();
-  }, [taskId]);
+  // Refresh task data when screen comes into focus (e.g., after editing)
+  useFocusEffect(
+    useCallback(() => {
+      fetchTask();
+    }, [taskId])
+  );
 
   const fetchTask = async () => {
     try {
@@ -240,9 +244,20 @@ export default function TaskDetailScreen({ route, navigation }) {
             const parsed = JSON.parse(task.imageUrl);
             if (Array.isArray(parsed)) {
               attachments = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+              // Handle single object format
+              attachments = [parsed];
             }
           } catch (e) {
+            // Not JSON, treat as direct URL
             attachments = [{ name: getFileName(task.imageUrl), url: task.imageUrl }];
+          }
+
+          // Filter out empty/invalid attachments
+          attachments = attachments.filter(att => att && (att.url || att.name || att.title || att.resourceName));
+
+          if (attachments.length === 0) {
+            return null;
           }
 
           return (
@@ -252,11 +267,17 @@ export default function TaskDetailScreen({ route, navigation }) {
               </Text>
               <Surface style={styles.detailsCard} elevation={1}>
                 {attachments.map((attachment, index) => {
-                  if (attachment.url) {
-                    return isImageFile(attachment.url) ? (
+                  // Get display name from various possible fields
+                  const displayName = attachment.name || attachment.title || attachment.resourceName || getFileName(attachment.url) || 'Attachment';
+
+                  // Get URL from various possible fields
+                  const fileUrl = attachment.url || attachment.fileUrl || attachment.driveItem?.resourceName;
+
+                  if (fileUrl && typeof fileUrl === 'string' && fileUrl.length > 0) {
+                    return isImageFile(fileUrl) ? (
                       <View key={index} style={styles.imageContainer}>
                         <Image
-                          source={{ uri: attachment.url }}
+                          source={{ uri: fileUrl }}
                           style={styles.taskImage}
                           resizeMode="cover"
                         />
@@ -265,18 +286,18 @@ export default function TaskDetailScreen({ route, navigation }) {
                       <TouchableOpacity
                         key={index}
                         style={styles.fileAttachment}
-                        onPress={() => handleOpenFile(attachment.url)}
+                        onPress={() => handleOpenFile(fileUrl)}
                       >
                         <View style={[styles.fileIconCircle, { backgroundColor: '#e3f2fd' }]}>
                           <MaterialCommunityIcons
-                            name={getFileIcon(attachment.url)}
+                            name={getFileIcon(fileUrl)}
                             size={24}
                             color="#1976d2"
                           />
                         </View>
                         <View style={styles.fileInfo}>
                           <Text style={styles.fileName} numberOfLines={1}>
-                            {attachment.name || getFileName(attachment.url)}
+                            {displayName}
                           </Text>
                           <Text style={styles.fileAction}>Tap to open</Text>
                         </View>
@@ -285,20 +306,28 @@ export default function TaskDetailScreen({ route, navigation }) {
                     );
                   }
 
+                  // No URL - show as external reference (Google Tasks or Microsoft To Do)
+                  const isGoogleTask = attachment.driveItem || attachment.resourceName || task.googleTaskId;
                   return (
                     <View key={index} style={styles.fileAttachment}>
-                      <View style={[styles.fileIconCircle, { backgroundColor: '#f5f5f5' }]}>
+                      <View style={[styles.fileIconCircle, { backgroundColor: isGoogleTask ? '#e8f5e9' : '#f5f5f5' }]}>
                         <MaterialCommunityIcons
-                          name={getFileIcon(attachment.name)}
+                          name={getFileIcon(displayName)}
                           size={24}
-                          color="#9e9e9e"
+                          color={isGoogleTask ? '#4caf50' : '#9e9e9e'}
                         />
                       </View>
                       <View style={styles.fileInfo}>
-                        <Text style={styles.fileName} numberOfLines={1}>{attachment.name}</Text>
-                        <Text style={styles.msNote}>Available in Microsoft To Do</Text>
+                        <Text style={styles.fileName} numberOfLines={1}>{displayName}</Text>
+                        <Text style={[styles.msNote, isGoogleTask && { color: '#4caf50' }]}>
+                          {isGoogleTask ? 'Available in Google Tasks' : 'Available in Microsoft To Do'}
+                        </Text>
                       </View>
-                      <MaterialCommunityIcons name="microsoft" size={20} color="#00A4EF" />
+                      <MaterialCommunityIcons
+                        name={isGoogleTask ? 'google' : 'microsoft'}
+                        size={20}
+                        color={isGoogleTask ? '#4285F4' : '#00A4EF'}
+                      />
                     </View>
                   );
                 })}
