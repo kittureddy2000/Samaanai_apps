@@ -20,6 +20,7 @@ const userRoutes = require('./routes/user');
 const emailTestRoutes = require('./routes/emailTest');
 const integrationRoutes = require('./routes/integrations');
 const voiceRoutes = require('./routes/voice');
+const ocrRoutes = require('./routes/ocr');
 
 // Middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -116,6 +117,7 @@ app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/test', emailTestRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
 app.use('/api/v1/voice', voiceRoutes);
+app.use('/api/v1/ocr', ocrRoutes);
 
 // 404 handler
 app.use((req, res) => {
