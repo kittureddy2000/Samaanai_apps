@@ -27,6 +27,10 @@ const taskValidation = [
     .optional()
     .isIn(['none', 'morning', 'evening', 'custom'])
     .withMessage('Reminder type must be none, morning, evening, or custom'),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high', 'urgent'])
+    .withMessage('Priority must be low, medium, high, or urgent'),
   body('imageUrl')
     .optional()
     .trim()
@@ -57,7 +61,11 @@ const taskUpdateValidation = [
   body('reminderType')
     .optional()
     .isIn(['none', 'morning', 'evening', 'custom'])
-    .withMessage('Reminder type must be none, morning, evening, or custom')
+    .withMessage('Reminder type must be none, morning, evening, or custom'),
+  body('priority')
+    .optional()
+    .isIn(['low', 'medium', 'high', 'urgent'])
+    .withMessage('Priority must be low, medium, high, or urgent')
 ];
 
 router.get('/tasks', todoController.getTasks);

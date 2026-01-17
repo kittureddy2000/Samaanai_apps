@@ -4,14 +4,15 @@ const logger = require('../config/logger');
 
 exports.getTasks = async (req, res, next) => {
   try {
-    const { completed, dueDate, reminderType } = req.query;
+    const { completed, dueDate, reminderType, priority } = req.query;
 
     const tasks = await prisma.task.findMany({
       where: {
         userId: req.user.id,
         ...(completed !== undefined && { completed: completed === 'true' }),
         ...(dueDate && { dueDate: new Date(dueDate) }),
-        ...(reminderType && { reminderType })
+        ...(reminderType && { reminderType }),
+        ...(priority && { priority })
       },
       orderBy: [
         { completed: 'asc' },
@@ -47,7 +48,7 @@ exports.getTask = async (req, res, next) => {
 
 exports.createTask = async (req, res, next) => {
   try {
-    const { name, description, dueDate, reminderType, imageUrl } = req.body;
+    const { name, description, dueDate, reminderType, priority, imageUrl } = req.body;
 
     const task = await prisma.task.create({
       data: {
@@ -56,6 +57,7 @@ exports.createTask = async (req, res, next) => {
         description,
         dueDate: dueDate ? new Date(dueDate) : null,
         reminderType,
+        priority: priority || 'medium',
         imageUrl
       }
     });
@@ -71,7 +73,7 @@ exports.createTask = async (req, res, next) => {
 
 exports.updateTask = async (req, res, next) => {
   try {
-    const { name, description, dueDate, reminderType, imageUrl, completed } = req.body;
+    const { name, description, dueDate, reminderType, priority, imageUrl, completed } = req.body;
 
     // First verify the task belongs to the user
     const existingTask = await prisma.task.findFirst({
@@ -101,6 +103,7 @@ exports.updateTask = async (req, res, next) => {
           description: description !== undefined ? description : existingTask.description,
           dueDate: existingTask.dueDate,
           reminderType: reminderType !== undefined ? reminderType : existingTask.reminderType,
+          priority: priority !== undefined ? priority : existingTask.priority,
           imageUrl: imageUrl !== undefined ? imageUrl : existingTask.imageUrl,
           completed: true,
           completedAt: new Date(),
@@ -118,6 +121,7 @@ exports.updateTask = async (req, res, next) => {
         ...(description !== undefined && { description }),
         dueDate: nextDueDate,
         ...(reminderType !== undefined && { reminderType }),
+        ...(priority !== undefined && { priority }),
         ...(imageUrl !== undefined && { imageUrl }),
         // Force completed to false for recurring tasks
         completed: false,
@@ -142,6 +146,7 @@ exports.updateTask = async (req, res, next) => {
         ...(description !== undefined && { description }),
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(reminderType !== undefined && { reminderType }),
+        ...(priority !== undefined && { priority }),
         ...(imageUrl !== undefined && { imageUrl }),
         ...(completed !== undefined && {
           completed,

@@ -1,6 +1,6 @@
-# Samaanai - Full-Stack Nutrition & Finance Platform
+# Samaanai - Full-Stack Nutrition & Task Management Platform
 
-A comprehensive platform combining nutrition tracking, finance management, and task organization built with React Native (Expo), Express.js, and PostgreSQL.
+A comprehensive platform combining nutrition tracking, task management with third-party integrations, and user wellness features built with React Native (Expo), Express.js, and PostgreSQL.
 
 ## Table of Contents
 
@@ -14,6 +14,9 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 - [Testing](#testing)
 - [Production Deployment](#production-deployment)
 - [Environment Variables](#environment-variables)
+- [API Reference](#api-reference)
+- [Monitoring & Logs](#monitoring--logs)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -27,10 +30,14 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 - Goal setting and achievement tracking
 
 ### Task Management
-- Create and organize tasks with due dates
-- Task completion tracking
-- Statistics dashboard
-- Image attachments support
+- Create and organize tasks with due dates and priorities
+- Task completion tracking and statistics dashboard
+- Recurring tasks (daily, weekly, monthly, yearly)
+- Priority levels (low, medium, high, urgent) with sorting and filtering
+- Rich attachments support (images, PDFs, documents)
+- Integration with Microsoft To Do and Google Tasks
+- Two-way sync with Google Tasks
+- Automatic recurring task regeneration
 
 ### Authentication
 - Email/password registration and login
@@ -73,13 +80,32 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 │                    DATABASE LAYER                        │
 │                                                           │
 │  ┌──────────────────────────────────────────────────┐  │
-│  │   PostgreSQL Database                             │  │
-│  │   • User authentication                           │  │
-│  │   • Nutrition data (meals, exercises, goals)      │  │
-│  │   • Tasks and todos                               │  │
+│  │   PostgreSQL Database (Prisma ORM)                │  │
+│  │   • User authentication & profiles                │  │
+│  │   • Nutrition data (meals, exercises, weight)     │  │
+│  │   • Tasks with priorities & recurring support     │  │
+│  │   • Third-party integrations (Google, Microsoft)  │  │
+│  │   • WebAuthn credentials                          │  │
 │  └──────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────┘
 ```
+
+### Database Schema Overview
+
+**Core Models:**
+- `User` - Authentication and user accounts
+- `UserProfile` - User preferences and settings
+- `Task` - Task management with priorities (low, medium, high, urgent)
+- `Integration` - OAuth tokens for third-party services
+- `MealEntry`, `ExerciseEntry`, `WeightEntry` - Nutrition tracking
+- `WebAuthnCredential` - Passwordless authentication
+
+**Task Model Features:**
+- Priority levels with indexed filtering
+- Recurring task support (daily, weekly, monthly, yearly)
+- Integration tracking (Microsoft To Do, Google Tasks)
+- Rich attachments (images, PDFs, documents)
+- Automatic completion history for recurring tasks
 
 ### How Expo Fits In
 
@@ -140,14 +166,16 @@ A comprehensive platform combining nutrition tracking, finance management, and t
 Samaanai_apps/
 ├── backend-express/           # Express.js API Server
 │   ├── src/
-│   │   ├── config/           # App configuration
-│   │   ├── controllers/      # Route controllers
-│   │   ├── middleware/       # Auth, error handling
-│   │   ├── routes/           # API endpoints
+│   │   ├── config/           # App configuration (database, logger, passport)
+│   │   ├── controllers/      # Route controllers (auth, nutrition, todo)
+│   │   ├── middleware/       # Auth, error handling, rate limiting
+│   │   ├── routes/           # API endpoints (auth, nutrition, todo, integrations)
+│   │   ├── services/         # Business logic (Google Tasks, Microsoft OAuth, task sync)
+│   │   ├── jobs/             # Scheduled jobs (notifications, reminders)
 │   │   └── server.js         # Entry point
 │   ├── prisma/
-│   │   ├── schema.prisma     # Database schema
-│   │   ├── migrations/       # Database migrations
+│   │   ├── schema.prisma     # Database schema (User, Task, Nutrition, Integrations)
+│   │   ├── migrations/       # Database migrations (includes priority field)
 │   │   └── seed.js           # Sample data
 │   ├── Dockerfile            # Production Docker image
 │   └── cloudbuild.yaml       # GCP Cloud Build config
@@ -158,9 +186,12 @@ Samaanai_apps/
 │   │   ├── contexts/         # React contexts (Auth, etc.)
 │   │   ├── navigation/       # App navigation setup
 │   │   ├── screens/          # App screens
-│   │   └── services/         # API client
+│   │   │   ├── todo/         # Task management screens (TodoScreen, TaskDetailScreen, AddEditTaskScreen)
+│   │   │   ├── nutrition/    # Nutrition tracking screens
+│   │   │   └── auth/         # Authentication screens
+│   │   └── services/         # API client (axios)
 │   ├── app.json             # Expo configuration
-│   ├── eas.json             # EAS Build configuration
+│   ├── eas.json             # EAS Build configuration (dev, staging, production)
 │   └── package.json
 │
 ├── .github/workflows/        # CI/CD Pipelines
@@ -531,10 +562,19 @@ eas submit --platform ios
 - `GET /api/v1/nutrition/reports/daily` - Daily nutrition report
 
 **Tasks:**
-- `GET /api/v1/todo/tasks` - Get all tasks
+- `GET /api/v1/todo/tasks` - Get all tasks (supports filtering by completed, dueDate, reminderType, priority)
+- `GET /api/v1/todo/tasks/stats` - Get task statistics (total, completed, pending, overdue)
+- `GET /api/v1/todo/tasks/:id` - Get single task by ID
 - `POST /api/v1/todo/tasks` - Create task
-- `PATCH /api/v1/todo/tasks/:id` - Update task
+- `PUT /api/v1/todo/tasks/:id` - Update task
 - `DELETE /api/v1/todo/tasks/:id` - Delete task
+- `PATCH /api/v1/todo/tasks/:id/toggle` - Toggle task completion status
+
+**Integrations:**
+- `GET /api/v1/integrations/microsoft/auth` - Microsoft To Do OAuth flow
+- `GET /api/v1/integrations/microsoft/tasks` - Sync Microsoft To Do tasks
+- `GET /api/v1/integrations/google/auth` - Google Tasks OAuth flow
+- `POST /api/v1/integrations/google/sync` - Two-way sync with Google Tasks
 
 ### Testing with curl
 
@@ -547,8 +587,34 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@samaanai.com","password":"password123"}'
 
-# Get tasks (with JWT token)
+# Get all tasks (with JWT token)
 curl http://localhost:8080/api/v1/todo/tasks \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Filter tasks by priority
+curl "http://localhost:8080/api/v1/todo/tasks?priority=urgent" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Create task with priority
+curl -X POST http://localhost:8080/api/v1/todo/tasks \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Complete project proposal",
+    "description": "Prepare and submit Q1 proposal",
+    "dueDate": "2026-02-01",
+    "priority": "high",
+    "reminderType": "none"
+  }'
+
+# Update task priority
+curl -X PUT http://localhost:8080/api/v1/todo/tasks/TASK_ID \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"priority": "urgent"}'
+
+# Get task statistics
+curl http://localhost:8080/api/v1/todo/tasks/stats \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -676,6 +742,116 @@ Secrets are managed in GCP Secret Manager and injected at runtime:
 - `JWT_REFRESH_SECRET` - Refresh token secret
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth secret
+
+---
+
+## API Reference
+
+### Task Management API
+
+The Task Management API provides comprehensive CRUD operations with support for priorities, recurring tasks, and third-party integrations.
+
+#### Task Schema
+
+```json
+{
+  "id": "uuid",
+  "userId": "uuid",
+  "name": "string (1-200 chars, required)",
+  "description": "string (max 1000 chars, optional)",
+  "dueDate": "ISO 8601 date (optional)",
+  "priority": "low | medium | high | urgent (default: medium)",
+  "reminderType": "none | morning | evening | custom | daily | weekly | monthly | yearly (optional)",
+  "imageUrl": "string or JSON array (max 500 chars, optional)",
+  "completed": "boolean (default: false)",
+  "completedAt": "ISO 8601 datetime (optional)",
+  "microsoftTodoId": "string (optional)",
+  "googleTaskId": "string (optional)",
+  "createdAt": "ISO 8601 datetime",
+  "updatedAt": "ISO 8601 datetime"
+}
+```
+
+#### Priority Levels
+
+- **low**: Non-urgent tasks, can be done anytime
+- **medium**: Standard priority (default)
+- **high**: Important tasks requiring attention soon
+- **urgent**: Critical tasks requiring immediate attention
+
+#### Filtering & Sorting
+
+**GET** `/api/v1/todo/tasks` supports query parameters:
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `completed` | boolean | Filter by completion status | `?completed=true` |
+| `dueDate` | ISO 8601 date | Filter by specific due date | `?dueDate=2026-02-01` |
+| `reminderType` | string | Filter by reminder type | `?reminderType=daily` |
+| `priority` | string | Filter by priority level | `?priority=urgent` |
+
+**Default sorting:**
+1. Incomplete tasks first
+2. By due date (ascending)
+3. By creation date (descending)
+
+**Example filters:**
+```bash
+# Get all urgent tasks
+GET /api/v1/todo/tasks?priority=urgent
+
+# Get incomplete high-priority tasks
+GET /api/v1/todo/tasks?completed=false&priority=high
+
+# Get all daily recurring tasks
+GET /api/v1/todo/tasks?reminderType=daily
+```
+
+#### Recurring Tasks
+
+Tasks with `reminderType` set to `daily`, `weekly`, `monthly`, or `yearly` automatically regenerate when completed:
+
+1. When marked complete, a completed copy is created for history
+2. Original task gets new due date and resets to incomplete
+3. Next due date calculated based on reminder type
+
+**Example:**
+```json
+{
+  "name": "Daily standup meeting",
+  "dueDate": "2026-01-20",
+  "reminderType": "daily",
+  "priority": "medium"
+}
+```
+When completed on Jan 20, automatically creates next occurrence for Jan 21.
+
+#### Integration Support
+
+**Microsoft To Do:**
+- One-way sync (Microsoft → Samaanai)
+- Tasks synced retain `microsoftTodoId`
+
+**Google Tasks:**
+- Two-way sync (bidirectional)
+- Tasks synced retain `googleTaskId`
+- Updates in Samaanai push to Google automatically
+
+#### Attachments
+
+The `imageUrl` field supports:
+- Single URL string: `"https://example.com/image.jpg"`
+- JSON array with metadata:
+  ```json
+  [
+    {
+      "uri": "file:///path/to/file.pdf",
+      "name": "document.pdf",
+      "type": "application/pdf",
+      "size": 102400
+    }
+  ]
+  ```
 
 ---
 

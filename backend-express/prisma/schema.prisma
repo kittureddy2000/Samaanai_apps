@@ -144,6 +144,7 @@ model Task {
   description     String?
   dueDate         DateTime? @map("due_date") @db.Date
   reminderType    String?   @map("reminder_type") // 'daily', 'weekly', 'monthly', 'yearly', null
+  priority        String    @default("medium") // 'low', 'medium', 'high', 'urgent'
   imageUrl        String?   @map("image_url")
   completed       Boolean   @default(false)
   completedAt     DateTime? @map("completed_at")
@@ -158,5 +159,6 @@ model Task {
   @@unique([userId, googleTaskId])
   @@index([userId, dueDate(sort: Asc)])
   @@index([userId, completed])
+  @@index([userId, priority])
   @@map("todo_task")
 }
