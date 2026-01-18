@@ -1,6 +1,6 @@
 const express = require('express');
-const { body } = require('express-validator');
-const { authenticateToken } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
+const { authenticate } = require('../middleware/auth');
 const {
   getCategories,
   createCategory,
@@ -8,12 +8,20 @@ const {
   deleteCategory,
   getTasksByCategory
 } = require('../controllers/categoryController');
-const { validateRequest } = require('../middleware/validation');
 
 const router = express.Router();
 
+// Validation middleware
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
 // All category routes require authentication
-router.use(authenticateToken);
+router.use(authenticate);
 
 // Get all categories
 router.get('/', getCategories);
