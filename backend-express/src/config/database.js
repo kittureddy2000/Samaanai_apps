@@ -3,10 +3,12 @@ const { PrismaClient } = require('@prisma/client');
 // Configure connection pool settings based on environment
 const datasourceUrl = process.env.DATABASE_URL;
 const isProduction = process.env.NODE_ENV === 'production';
+const isStaging = process.env.NODE_ENV === 'staging';
+const isServerless = isProduction || isStaging;
 
-// Production needs more relaxed settings due to serverless nature
-const connectionLimit = isProduction ? 10 : 20;
-const poolTimeout = isProduction ? 60 : 30;
+// Production and staging need conservative settings due to serverless nature and Cloud SQL limits
+const connectionLimit = isServerless ? 5 : 20;
+const poolTimeout = isServerless ? 60 : 30;
 
 // Add connection pool timeout configuration to prevent stale connections
 const poolConfig = `connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}&connect_timeout=10`;
@@ -24,7 +26,7 @@ const prisma = new PrismaClient({
   },
   log: process.env.NODE_ENV === 'development'
     ? ['query', 'info', 'warn', 'error']
-    : ['error'],
+    : ['warn', 'error'],
   errorFormat: 'pretty'
 });
 
