@@ -1,8 +1,10 @@
--- DropIndex
-DROP INDEX "public"."todo_task_google_task_id_key";
+-- DropIndex (if exists - may have been renamed already)
+DROP INDEX IF EXISTS "public"."todo_task_google_task_id_key";
+DROP INDEX IF EXISTS "public"."Task_userId_googleTaskId_key";
 
--- DropIndex
-DROP INDEX "public"."todo_task_microsoft_todo_id_key";
+-- DropIndex (if exists - may have been renamed already)
+DROP INDEX IF EXISTS "public"."todo_task_microsoft_todo_id_key";
+DROP INDEX IF EXISTS "public"."Task_userId_microsoftTodoId_key";
 
 -- AlterTable
 ALTER TABLE "todo_task" ADD COLUMN     "category_id" TEXT;
@@ -36,11 +38,21 @@ ALTER TABLE "category" ADD CONSTRAINT "category_user_id_fkey" FOREIGN KEY ("user
 -- AddForeignKey
 ALTER TABLE "todo_task" ADD CONSTRAINT "todo_task_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- RenameIndex
-ALTER INDEX "Task_userId_googleTaskId_key" RENAME TO "todo_task_user_id_google_task_id_key";
+-- RenameIndex (if not already renamed)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Task_userId_googleTaskId_key') THEN
+    ALTER INDEX "Task_userId_googleTaskId_key" RENAME TO "todo_task_user_id_google_task_id_key";
+  END IF;
+END $$;
 
--- RenameIndex
-ALTER INDEX "Task_userId_microsoftTodoId_key" RENAME TO "todo_task_user_id_microsoft_todo_id_key";
+-- RenameIndex (if not already renamed)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'Task_userId_microsoftTodoId_key') THEN
+    ALTER INDEX "Task_userId_microsoftTodoId_key" RENAME TO "todo_task_user_id_microsoft_todo_id_key";
+  END IF;
+END $$;
 
 -- Data Migration: Create default "Tasks" category for all existing users
 INSERT INTO "category" ("id", "user_id", "name", "color", "icon", "is_default", "created_at", "updated_at")
