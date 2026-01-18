@@ -690,8 +690,13 @@ gh run list --branch main
 
 **Database URL:**
 ```bash
+# Staging database credentials:
+# User: samaanai_mobile
+# Database: samaanai_staging
+# Instance: samaanai-backend-staging-db
+
 gcloud config set project samaanai-stg-1009-124126
-echo -n "new-database-url" | gcloud secrets versions add DATABASE_URL --data-file=-
+echo -n "postgresql://samaanai_mobile:PASSWORD@localhost/samaanai_staging?host=/cloudsql/samaanai-stg-1009-124126:us-west1:samaanai-backend-staging-db" | gcloud secrets versions add DATABASE_URL --data-file=-
 ```
 
 **Any other secret:**
