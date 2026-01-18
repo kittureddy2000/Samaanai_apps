@@ -448,10 +448,51 @@ export default function TodoScreen({ navigation, route }) {
       {/* Dashboard Summary */}
       <View style={styles.dashboardHeader}>
         <View style={styles.greetingRow}>
-          <View>
+          <View style={styles.greetingColumn}>
             <Text style={styles.greetingText}>{getGreeting()}</Text>
             <Text style={styles.dateText}>{format(new Date(), 'EEEE, MMMM d')}</Text>
           </View>
+
+          {/* Categories Horizontal Scroll - Moved to header */}
+          {categories.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.headerCategoriesScroll}
+              contentContainerStyle={styles.headerCategoriesContent}
+            >
+              <TouchableOpacity
+                style={[styles.headerCategoryChip, !selectedCategoryId && styles.headerCategoryChipActive]}
+                onPress={() => setSelectedCategoryId(null)}
+              >
+                <MaterialCommunityIcons
+                  name="view-grid"
+                  size={14}
+                  color={!selectedCategoryId ? '#2196f3' : '#666'}
+                />
+              </TouchableOpacity>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[styles.headerCategoryChip, selectedCategoryId === category.id && styles.headerCategoryChipActive]}
+                  onPress={() => setSelectedCategoryId(category.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={category.icon || 'folder'}
+                    size={14}
+                    color={selectedCategoryId === category.id ? category.color : '#666'}
+                  />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.headerCategoryChip}
+                onPress={() => navigation.navigate('CategoryManagement')}
+              >
+                <MaterialCommunityIcons name="cog" size={14} color="#666" />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
           <View style={styles.headerActions}>
             {/* Microsoft Integration Button */}
             <TouchableOpacity
@@ -571,56 +612,6 @@ export default function TodoScreen({ navigation, route }) {
             />
           </Menu>
         </View>
-
-        {/* Categories Horizontal Scroll */}
-        {categories.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoriesScroll}
-            contentContainerStyle={styles.categoriesContent}
-          >
-            <TouchableOpacity
-              style={[styles.categoryChip, !selectedCategoryId && styles.categoryChipActive]}
-              onPress={() => setSelectedCategoryId(null)}
-            >
-              <MaterialCommunityIcons
-                name="view-grid"
-                size={16}
-                color={!selectedCategoryId ? '#2196f3' : '#666'}
-              />
-              <Text style={[styles.categoryChipText, !selectedCategoryId && styles.categoryChipTextActive]}>
-                All
-              </Text>
-            </TouchableOpacity>
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[styles.categoryChip, selectedCategoryId === category.id && styles.categoryChipActive]}
-                onPress={() => setSelectedCategoryId(category.id)}
-              >
-                <MaterialCommunityIcons
-                  name={category.icon || 'folder'}
-                  size={16}
-                  color={selectedCategoryId === category.id ? category.color : '#666'}
-                />
-                <Text style={[
-                  styles.categoryChipText,
-                  selectedCategoryId === category.id && styles.categoryChipTextActive
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity
-              style={styles.categoryChip}
-              onPress={() => navigation.navigate('CategoryManagement')}
-            >
-              <MaterialCommunityIcons name="cog" size={16} color="#666" />
-              <Text style={styles.categoryChipText}>Manage</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
       </View>
 
       {/* Tasks List */}
@@ -695,6 +686,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10
   },
+  greetingColumn: {
+    flexShrink: 0
+  },
   greetingText: {
     fontSize: 18,
     fontWeight: '700',
@@ -705,9 +699,33 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginTop: 2
   },
+  headerCategoriesScroll: {
+    flex: 1,
+    marginHorizontal: 8
+  },
+  headerCategoriesContent: {
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4
+  },
+  headerCategoryChip: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0'
+  },
+  headerCategoryChipActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3'
+  },
   headerActions: {
     flexDirection: 'row',
-    gap: 6
+    gap: 6,
+    flexShrink: 0
   },
   statsRow: {
     flexDirection: 'row',
@@ -923,37 +941,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 80
-  },
-  categoriesScroll: {
-    marginTop: 12
-  },
-  categoriesContent: {
-    paddingRight: 16,
-    gap: 8
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 18,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e8e8e8',
-    marginRight: 8
-  },
-  categoryChipActive: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3'
-  },
-  categoryChipText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500'
-  },
-  categoryChipTextActive: {
-    color: '#2196f3',
-    fontWeight: '600'
   }
 });
