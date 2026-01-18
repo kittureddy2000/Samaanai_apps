@@ -17,7 +17,7 @@ export default function TodoScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('pending'); // 'overdue', 'dueThisWeek', 'pending' - Default to pending
-  const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate', 'name', 'createdAt'
+  const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'name', 'createdAt' - Default to priority
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
