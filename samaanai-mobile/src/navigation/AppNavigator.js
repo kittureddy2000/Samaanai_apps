@@ -22,6 +22,7 @@ import WeightTrackingScreen from '../screens/nutrition/WeightTrackingScreen';
 import TodoScreen from '../screens/todo/TodoScreen';
 import AddEditTaskScreen from '../screens/todo/AddEditTaskScreen';
 import TaskDetailScreen from '../screens/todo/TaskDetailScreen';
+import CategoryManagementScreen from '../screens/todo/CategoryManagementScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/account/EditProfileScreen';
 import ChangePasswordScreen from '../screens/account/ChangePasswordScreen';
@@ -99,6 +100,11 @@ function TodoStack() {
         name="TaskDetail"
         component={TaskDetailScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CategoryManagement"
+        component={CategoryManagementScreen}
+        options={{ title: 'Categories' }}
       />
     </Stack.Navigator>
   );

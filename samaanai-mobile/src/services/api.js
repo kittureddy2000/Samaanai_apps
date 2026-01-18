@@ -197,6 +197,22 @@ export const api = {
   getTaskStats: () =>
     apiClient.get('/todo/tasks/stats'),
 
+  // Categories
+  getCategories: () =>
+    apiClient.get('/categories'),
+
+  createCategory: (categoryData) =>
+    apiClient.post('/categories', categoryData),
+
+  updateCategory: (id, categoryData) =>
+    apiClient.patch(`/categories/${id}`, categoryData),
+
+  deleteCategory: (id) =>
+    apiClient.delete(`/categories/${id}`),
+
+  getTasksByCategory: (id, params) =>
+    apiClient.get(`/categories/${id}/tasks`, { params }),
+
   // User
   getProfile: () => apiClient.get('/user/profile'),
 

@@ -46,7 +46,8 @@ export default function AddEditTaskScreen({ route, navigation }) {
     dueDate: defaultDueDate,
     reminderType: task?.reminderType || '',
     priority: task?.priority || 'medium',
-    imageUrl: task?.imageUrl || ''
+    imageUrl: task?.imageUrl || '',
+    categoryId: task?.categoryId || null
   });
   const [errors, setErrors] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -55,6 +56,33 @@ export default function AddEditTaskScreen({ route, navigation }) {
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [showReminderOptions, setShowReminderOptions] = useState(false);
   const [showPriorityOptions, setShowPriorityOptions] = useState(false);
+  const [showCategoryOptions, setShowCategoryOptions] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const { data } = await api.getCategories();
+      setCategories(data.categories);
+
+      // If creating a new task and no category selected, set default category
+      if (!isEdit && !formData.categoryId) {
+        const defaultCategory = data.categories.find(c => c.isDefault);
+        if (defaultCategory) {
+          setFormData(prev => ({ ...prev, categoryId: defaultCategory.id }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -248,7 +276,8 @@ export default function AddEditTaskScreen({ route, navigation }) {
         dueDate: formData.dueDate || null,
         reminderType: formData.reminderType || null,
         priority: formData.priority || 'medium',
-        imageUrl: formData.imageUrl.trim() || null
+        imageUrl: formData.imageUrl.trim() || null,
+        categoryId: formData.categoryId || null
       };
 
       if (isEdit) {
@@ -266,6 +295,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
 
   const selectedReminder = REMINDER_OPTIONS.find(r => r.value === formData.reminderType) || REMINDER_OPTIONS[0];
   const selectedPriority = PRIORITY_OPTIONS.find(p => p.value === formData.priority) || PRIORITY_OPTIONS[1];
+  const selectedCategory = categories.find(c => c.id === formData.categoryId);
 
   return (
     <KeyboardAvoidingView
@@ -371,6 +401,32 @@ export default function AddEditTaskScreen({ route, navigation }) {
               {selectedPriority.label}
             </Text>
           </TouchableOpacity>
+
+          {/* Category */}
+          {!loadingCategories && categories.length > 0 && (
+            <TouchableOpacity
+              style={[styles.optionChip, selectedCategory && styles.optionChipActive]}
+              onPress={() => setShowCategoryOptions(!showCategoryOptions)}
+            >
+              {selectedCategory && (
+                <MaterialCommunityIcons
+                  name={selectedCategory.icon || 'folder'}
+                  size={18}
+                  color={selectedCategory.color || '#666'}
+                />
+              )}
+              {!selectedCategory && (
+                <MaterialCommunityIcons
+                  name="folder-outline"
+                  size={18}
+                  color="#666"
+                />
+              )}
+              <Text style={[styles.optionText, selectedCategory && styles.optionTextActive]}>
+                {selectedCategory ? selectedCategory.name : 'Category'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Reminder Options Dropdown */}
@@ -435,6 +491,41 @@ export default function AddEditTaskScreen({ route, navigation }) {
                 </Text>
                 {formData.priority === option.value && (
                   <MaterialCommunityIcons name="check" size={20} color={option.color} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Category Options Dropdown */}
+        {showCategoryOptions && (
+          <View style={styles.reminderDropdown}>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.reminderOption,
+                  formData.categoryId === category.id && styles.reminderOptionActive
+                ]}
+                onPress={() => {
+                  setFormData({ ...formData, categoryId: category.id });
+                  setShowCategoryOptions(false);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={category.icon || 'folder'}
+                  size={20}
+                  color={category.color || '#666'}
+                />
+                <Text style={[
+                  styles.reminderOptionText,
+                  formData.categoryId === category.id && styles.reminderOptionTextActive
+                ]}>
+                  {category.name}
+                  {category.isDefault && ' (Default)'}
+                </Text>
+                {formData.categoryId === category.id && (
+                  <MaterialCommunityIcons name="check" size={20} color="#2196f3" />
                 )}
               </TouchableOpacity>
             ))}

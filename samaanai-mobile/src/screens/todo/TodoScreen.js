@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function TodoScreen({ navigation }) {
+export default function TodoScreen({ navigation, route }) {
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -20,6 +20,10 @@ export default function TodoScreen({ navigation }) {
   const [sortBy, setSortBy] = useState('priority'); // 'priority', 'dueDate', 'name', 'createdAt' - Default to priority
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Categories
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(route.params?.categoryId || null);
 
   // Microsoft Integration state
   const [microsoftConnected, setMicrosoftConnected] = useState(false);
@@ -38,6 +42,15 @@ export default function TodoScreen({ navigation }) {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load tasks');
       console.error('Tasks error:', err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const { data } = await api.getCategories();
+      setCategories(data.categories);
+    } catch (err) {
+      console.error('Categories error:', err);
     }
   };
 
@@ -227,6 +240,11 @@ export default function TodoScreen({ navigation }) {
     const weekFromNow = new Date();
     weekFromNow.setDate(now.getDate() + 7);
 
+    // Apply category filter
+    if (selectedCategoryId) {
+      filteredTasks = filteredTasks.filter(task => task.categoryId === selectedCategoryId);
+    }
+
     // Apply filter
     if (filter === 'pending') {
       filteredTasks = filteredTasks.filter(task => !task.completed);
@@ -253,11 +271,11 @@ export default function TodoScreen({ navigation }) {
 
     // Apply sorting
     return sortTasks(filteredTasks, sortBy);
-  }, [allTasks, filter, sortBy, searchQuery]);
+  }, [allTasks, filter, sortBy, searchQuery, selectedCategoryId]);
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([fetchTasks(), fetchStats(), checkMicrosoftStatus(), checkGoogleStatus()]);
+    await Promise.all([fetchTasks(), fetchStats(), fetchCategories(), checkMicrosoftStatus(), checkGoogleStatus()]);
     setLoading(false);
     setRefreshing(false);
   };
@@ -553,6 +571,56 @@ export default function TodoScreen({ navigation }) {
             />
           </Menu>
         </View>
+
+        {/* Categories Horizontal Scroll */}
+        {categories.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoriesScroll}
+            contentContainerStyle={styles.categoriesContent}
+          >
+            <TouchableOpacity
+              style={[styles.categoryChip, !selectedCategoryId && styles.categoryChipActive]}
+              onPress={() => setSelectedCategoryId(null)}
+            >
+              <MaterialCommunityIcons
+                name="view-grid"
+                size={16}
+                color={!selectedCategoryId ? '#2196f3' : '#666'}
+              />
+              <Text style={[styles.categoryChipText, !selectedCategoryId && styles.categoryChipTextActive]}>
+                All
+              </Text>
+            </TouchableOpacity>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.categoryChip, selectedCategoryId === category.id && styles.categoryChipActive]}
+                onPress={() => setSelectedCategoryId(category.id)}
+              >
+                <MaterialCommunityIcons
+                  name={category.icon || 'folder'}
+                  size={16}
+                  color={selectedCategoryId === category.id ? category.color : '#666'}
+                />
+                <Text style={[
+                  styles.categoryChipText,
+                  selectedCategoryId === category.id && styles.categoryChipTextActive
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.categoryChip}
+              onPress={() => navigation.navigate('CategoryManagement')}
+            >
+              <MaterialCommunityIcons name="cog" size={16} color="#666" />
+              <Text style={styles.categoryChipText}>Manage</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
       </View>
 
       {/* Tasks List */}
@@ -855,5 +923,37 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 80
+  },
+  categoriesScroll: {
+    marginTop: 12
+  },
+  categoriesContent: {
+    paddingRight: 16,
+    gap: 8
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e8e8e8',
+    marginRight: 8
+  },
+  categoryChipActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3'
+  },
+  categoryChipText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500'
+  },
+  categoryChipTextActive: {
+    color: '#2196f3',
+    fontWeight: '600'
   }
 });
