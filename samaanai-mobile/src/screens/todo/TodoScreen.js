@@ -56,6 +56,13 @@ export default function TodoScreen({ navigation }) {
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
       case 'createdAt':
         return sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      case 'priority':
+        return sorted.sort((a, b) => {
+          const priorityOrder = { 'urgent': 0, 'high': 1, 'medium': 2, 'low': 3 };
+          const aPriority = priorityOrder[a.priority] ?? 4;
+          const bPriority = priorityOrder[b.priority] ?? 4;
+          return aPriority - bPriority;
+        });
       default:
         return sorted;
     }
@@ -309,20 +316,18 @@ export default function TodoScreen({ navigation }) {
   }
 
   const getPriorityColor = (task) => {
-    // Determine priority color based on task properties
-    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
-    if (isOverdue) return '#d32f2f'; // Red for overdue
-    if (task.completed) return '#8bc34a'; // Light green for completed
+    // If completed, always show green
+    if (task.completed) return '#8bc34a';
 
-    // Check if due today
-    const today = new Date();
-    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-    if (dueDate) {
-      const isToday = dueDate.toDateString() === today.toDateString();
-      if (isToday) return '#ff9800'; // Orange for today
-    }
+    // Use priority field colors
+    const priorityColors = {
+      'urgent': '#d32f2f',  // Red
+      'high': '#f44336',    // Red
+      'medium': '#ff9800',  // Orange
+      'low': '#4caf50'      // Green
+    };
 
-    return '#42a5f5'; // Blue default
+    return priorityColors[task.priority] || '#42a5f5'; // Blue default if no priority
   };
 
   const formatDueDate = (dueDate) => {
@@ -526,6 +531,11 @@ export default function TodoScreen({ navigation }) {
               </TouchableOpacity>
             }
           >
+            <Menu.Item
+              onPress={() => { setSortBy('priority'); setSortMenuVisible(false); }}
+              title="Sort by Priority"
+              leadingIcon={sortBy === 'priority' ? 'check' : undefined}
+            />
             <Menu.Item
               onPress={() => { setSortBy('dueDate'); setSortMenuVisible(false); }}
               title="Sort by Due Date"

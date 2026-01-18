@@ -23,6 +23,13 @@ const REMINDER_OPTIONS = [
   { label: 'Yearly', value: 'yearly', icon: 'calendar-star' },
 ];
 
+const PRIORITY_OPTIONS = [
+  { label: 'Low', value: 'low', icon: 'flag-outline', color: '#4caf50' },
+  { label: 'Medium', value: 'medium', icon: 'flag', color: '#ff9800' },
+  { label: 'High', value: 'high', icon: 'flag', color: '#f44336' },
+  { label: 'Urgent', value: 'urgent', icon: 'flag-variant', color: '#d32f2f' },
+];
+
 export default function AddEditTaskScreen({ route, navigation }) {
   const { task } = route.params || {};
   const isEdit = !!task;
@@ -38,6 +45,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
     description: task?.description || '',
     dueDate: defaultDueDate,
     reminderType: task?.reminderType || '',
+    priority: task?.priority || 'medium',
     imageUrl: task?.imageUrl || ''
   });
   const [errors, setErrors] = useState({});
@@ -46,6 +54,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
   const [selectedImage, setSelectedImage] = useState(task?.imageUrl || null);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [showReminderOptions, setShowReminderOptions] = useState(false);
+  const [showPriorityOptions, setShowPriorityOptions] = useState(false);
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -238,6 +247,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
         description: formData.description.trim() || null,
         dueDate: formData.dueDate || null,
         reminderType: formData.reminderType || null,
+        priority: formData.priority || 'medium',
         imageUrl: formData.imageUrl.trim() || null
       };
 
@@ -255,6 +265,7 @@ export default function AddEditTaskScreen({ route, navigation }) {
   };
 
   const selectedReminder = REMINDER_OPTIONS.find(r => r.value === formData.reminderType) || REMINDER_OPTIONS[0];
+  const selectedPriority = PRIORITY_OPTIONS.find(p => p.value === formData.priority) || PRIORITY_OPTIONS[1];
 
   return (
     <KeyboardAvoidingView
@@ -345,6 +356,21 @@ export default function AddEditTaskScreen({ route, navigation }) {
               {formData.reminderType ? selectedReminder.label : 'Remind'}
             </Text>
           </TouchableOpacity>
+
+          {/* Priority */}
+          <TouchableOpacity
+            style={[styles.optionChip, styles.optionChipActive]}
+            onPress={() => setShowPriorityOptions(!showPriorityOptions)}
+          >
+            <MaterialCommunityIcons
+              name={selectedPriority.icon}
+              size={18}
+              color={selectedPriority.color}
+            />
+            <Text style={[styles.optionText, styles.optionTextActive, { color: selectedPriority.color }]}>
+              {selectedPriority.label}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Reminder Options Dropdown */}
@@ -375,6 +401,40 @@ export default function AddEditTaskScreen({ route, navigation }) {
                 </Text>
                 {formData.reminderType === option.value && (
                   <MaterialCommunityIcons name="check" size={20} color="#2196f3" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Priority Options Dropdown */}
+        {showPriorityOptions && (
+          <View style={styles.reminderDropdown}>
+            {PRIORITY_OPTIONS.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.reminderOption,
+                  formData.priority === option.value && styles.reminderOptionActive
+                ]}
+                onPress={() => {
+                  setFormData({ ...formData, priority: option.value });
+                  setShowPriorityOptions(false);
+                }}
+              >
+                <MaterialCommunityIcons
+                  name={option.icon}
+                  size={20}
+                  color={option.color}
+                />
+                <Text style={[
+                  styles.reminderOptionText,
+                  formData.priority === option.value && { color: option.color, fontWeight: '500' }
+                ]}>
+                  {option.label}
+                </Text>
+                {formData.priority === option.value && (
+                  <MaterialCommunityIcons name="check" size={20} color={option.color} />
                 )}
               </TouchableOpacity>
             ))}
