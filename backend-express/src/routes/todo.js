@@ -31,6 +31,10 @@ const taskValidation = [
     .optional()
     .isIn(['low', 'medium', 'high', 'urgent'])
     .withMessage('Priority must be low, medium, high, or urgent'),
+  body('categoryId')
+    .optional()
+    .isUUID()
+    .withMessage('Category ID must be a valid UUID'),
   body('imageUrl')
     .optional()
     .trim()
@@ -65,7 +69,11 @@ const taskUpdateValidation = [
   body('priority')
     .optional()
     .isIn(['low', 'medium', 'high', 'urgent'])
-    .withMessage('Priority must be low, medium, high, or urgent')
+    .withMessage('Priority must be low, medium, high, or urgent'),
+  body('categoryId')
+    .optional()
+    .isUUID()
+    .withMessage('Category ID must be a valid UUID')
 ];
 
 router.get('/tasks', todoController.getTasks);

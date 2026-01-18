@@ -4,7 +4,7 @@ const logger = require('../config/logger');
 
 exports.getTasks = async (req, res, next) => {
   try {
-    const { completed, dueDate, reminderType, priority } = req.query;
+    const { completed, dueDate, reminderType, priority, categoryId } = req.query;
 
     const tasks = await prisma.task.findMany({
       where: {
@@ -12,7 +12,11 @@ exports.getTasks = async (req, res, next) => {
         ...(completed !== undefined && { completed: completed === 'true' }),
         ...(dueDate && { dueDate: new Date(dueDate) }),
         ...(reminderType && { reminderType }),
-        ...(priority && { priority })
+        ...(priority && { priority }),
+        ...(categoryId && { categoryId })
+      },
+      include: {
+        category: true
       },
       orderBy: [
         { completed: 'asc' },
@@ -48,17 +52,35 @@ exports.getTask = async (req, res, next) => {
 
 exports.createTask = async (req, res, next) => {
   try {
-    const { name, description, dueDate, reminderType, priority, imageUrl } = req.body;
+    const { name, description, dueDate, reminderType, priority, imageUrl, categoryId } = req.body;
+
+    // If no categoryId provided, use the default "Tasks" category
+    let finalCategoryId = categoryId;
+    if (!finalCategoryId) {
+      const defaultCategory = await prisma.category.findFirst({
+        where: {
+          userId: req.user.id,
+          isDefault: true
+        }
+      });
+      if (defaultCategory) {
+        finalCategoryId = defaultCategory.id;
+      }
+    }
 
     const task = await prisma.task.create({
       data: {
         userId: req.user.id,
+        categoryId: finalCategoryId,
         name,
         description,
         dueDate: dueDate ? new Date(dueDate) : null,
         reminderType,
         priority: priority || 'medium',
         imageUrl
+      },
+      include: {
+        category: true
       }
     });
 
@@ -73,7 +95,7 @@ exports.createTask = async (req, res, next) => {
 
 exports.updateTask = async (req, res, next) => {
   try {
-    const { name, description, dueDate, reminderType, priority, imageUrl, completed } = req.body;
+    const { name, description, dueDate, reminderType, priority, imageUrl, completed, categoryId } = req.body;
 
     // First verify the task belongs to the user
     const existingTask = await prisma.task.findFirst({
@@ -123,6 +145,7 @@ exports.updateTask = async (req, res, next) => {
         ...(reminderType !== undefined && { reminderType }),
         ...(priority !== undefined && { priority }),
         ...(imageUrl !== undefined && { imageUrl }),
+        ...(categoryId !== undefined && { categoryId }),
         // Force completed to false for recurring tasks
         completed: false,
         completedAt: null
@@ -148,6 +171,7 @@ exports.updateTask = async (req, res, next) => {
         ...(reminderType !== undefined && { reminderType }),
         ...(priority !== undefined && { priority }),
         ...(imageUrl !== undefined && { imageUrl }),
+        ...(categoryId !== undefined && { categoryId }),
         ...(completed !== undefined && {
           completed,
           completedAt: completed ? new Date() : null

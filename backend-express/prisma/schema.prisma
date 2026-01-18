@@ -28,6 +28,7 @@ model User {
   weightEntries     WeightEntry[]
   webauthnCredentials WebAuthnCredential[]
   tasks             Task[]
+  categories        Category[]
   integrations      Integration[]
 
   @@map("auth_user")
@@ -137,9 +138,28 @@ model WeightEntry {
 }
 
 // Todo Models
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  color     String?  // Hex color code for category
+  icon      String?  // Icon name for category
+  isDefault Boolean  @default(false) @map("is_default") // For the default "Tasks" category
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, name]) // Each user can only have one category with a given name
+  @@index([userId])
+  @@map("category")
+}
+
 model Task {
   id              String    @id @default(uuid())
   userId          String    @map("user_id")
+  categoryId      String?   @map("category_id")
   name            String
   description     String?
   dueDate         DateTime? @map("due_date") @db.Date
@@ -153,12 +173,14 @@ model Task {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@unique([userId, microsoftTodoId])
   @@unique([userId, googleTaskId])
   @@index([userId, dueDate(sort: Asc)])
   @@index([userId, completed])
   @@index([userId, priority])
+  @@index([userId, categoryId])
   @@map("todo_task")
 }

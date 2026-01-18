@@ -16,6 +16,7 @@ const logger = require('./config/logger');
 const authRoutes = require('./routes/auth');
 const nutritionRoutes = require('./routes/nutrition');
 const todoRoutes = require('./routes/todo');
+const categoryRoutes = require('./routes/category');
 const userRoutes = require('./routes/user');
 const emailTestRoutes = require('./routes/emailTest');
 const integrationRoutes = require('./routes/integrations');
@@ -113,6 +114,7 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/nutrition', nutritionRoutes);
 app.use('/api/v1/todo', todoRoutes);
+app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/test', emailTestRoutes);
 app.use('/api/v1/integrations', integrationRoutes);
