@@ -450,50 +450,23 @@ export default function TodoScreen({ navigation, route }) {
         <View style={styles.greetingRow}>
           <View style={styles.greetingColumn}>
             <Text style={styles.greetingText}>{getGreeting()}</Text>
-            <Text style={styles.dateText}>{format(new Date(), 'EEEE, MMMM d')}</Text>
+            <Text style={styles.dateText}>
+              {format(new Date(), 'EEEE, MMMM d')}
+              {selectedCategoryId && categories.length > 0 && (() => {
+                const selectedCategory = categories.find(c => c.id === selectedCategoryId);
+                return selectedCategory ? ` • ${selectedCategory.name}` : '';
+              })()}
+            </Text>
           </View>
 
-          {/* Categories Horizontal Scroll - Moved to header */}
-          {categories.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.headerCategoriesScroll}
-              contentContainerStyle={styles.headerCategoriesContent}
-            >
-              <TouchableOpacity
-                style={[styles.headerCategoryChip, !selectedCategoryId && styles.headerCategoryChipActive]}
-                onPress={() => setSelectedCategoryId(null)}
-              >
-                <MaterialCommunityIcons
-                  name="view-grid"
-                  size={14}
-                  color={!selectedCategoryId ? '#2196f3' : '#666'}
-                />
-              </TouchableOpacity>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[styles.headerCategoryChip, selectedCategoryId === category.id && styles.headerCategoryChipActive]}
-                  onPress={() => setSelectedCategoryId(category.id)}
-                >
-                  <MaterialCommunityIcons
-                    name={category.icon || 'folder'}
-                    size={14}
-                    color={selectedCategoryId === category.id ? category.color : '#666'}
-                  />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.headerCategoryChip}
-                onPress={() => navigation.navigate('CategoryManagement')}
-              >
-                <MaterialCommunityIcons name="cog" size={14} color="#666" />
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-
           <View style={styles.headerActions}>
+            {/* Category Management Button */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate('CategoryManagement')}
+              style={styles.integrationButton}
+            >
+              <MaterialCommunityIcons name="cog" size={18} color="#666" />
+            </TouchableOpacity>
             {/* Microsoft Integration Button */}
             <TouchableOpacity
               onPress={microsoftConnected ? handleSyncMicrosoft : handleConnectMicrosoft}
@@ -698,29 +671,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#757575',
     marginTop: 2
-  },
-  headerCategoriesScroll: {
-    flex: 1,
-    marginHorizontal: 8
-  },
-  headerCategoriesContent: {
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 4
-  },
-  headerCategoryChip: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#e0e0e0'
-  },
-  headerCategoryChipActive: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3'
   },
   headerActions: {
     flexDirection: 'row',
